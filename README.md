@@ -13,6 +13,22 @@ Currently, we provide only model weights for mammalian species and Tiberius does
 :warning: **We will be migrating Tiberius from TensorFlow 2.10 to TensorFlow 2.17 during the week of October 7–12., which will make the installation of a compatible TensorFlow version easier.**
 
 ## Installation
+
+### NOTE for install
+tf==2.10.0 对于CUDA支持不友好, 需要自己下载配置cuda drive, 但是tf==2.17.0对于CUDA支持很友好, 可以直接安装
+
+### Use in WuChao cluster
+```shell
+source /home/share/huadjyin/home/s_sukui/envs/env_py38_torch17
+conda activate /home/share/huadjyin/home/s_sukui/.conda/envs/tf2_10
+cd /home/share/huadjyin/home/s_sukui/03_project/01_GeneLLM/Tiberius
+
+# inference gene structure by Tiberius, you need to provide fasta file
+python bin/tiberius.py --genome test_data/hg38_nop56.fasta --out output.gtf --model weights/tiberius_weights --learnMSA ./learnMSA --batch_size 16
+```
+
+```shell
+
 ### Git Repositories
 
 Clone the repository, including learnMSA as submodule:
