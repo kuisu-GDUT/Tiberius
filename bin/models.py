@@ -433,7 +433,7 @@ def add_hmm_layer(model, gene_pred_layer=None, dense_size=128, pool_size=9,
         else:
             #if this happens, implement more reduction functions
             raise ValueError(f"Invalid combination of loaded output size ({x.shape[-1]}) and requested output size ({output_size}).")
-    x = tf.keras.layers.Lambda(lambda x: x, name='lstm_out')(x)
+    x = tf.keras.layers.Lambda(lambda x: x, name='lstm_out')(x) # get output from model
 
     nuc = tf.cast(inputs[0][...,:5] if isinstance(inputs, list) else inputs[...,:5], tf.float32)
 
@@ -482,7 +482,7 @@ def add_hmm_layer(model, gene_pred_layer=None, dense_size=128, pool_size=9,
         y_hmm = gene_pred_layer(factor_x, nucleotides=factor_nuc, embeddings=factor_emb, end_hints=input_hints_hmm)
         y_hmm = tf.reshape(y_hmm, (-1, seq_len, 14*num_hmm+1))
     else:
-        y_hmm = gene_pred_layer(x, nucleotides=nuc, embeddings=emb)
+        y_hmm = gene_pred_layer(x, nucleotides=nuc, embeddings=emb) # x: lstm model output, nuc: ACGTN one-hot
 
     if output_size < 15:
         y = Activation('softmax')(y_hmm)
