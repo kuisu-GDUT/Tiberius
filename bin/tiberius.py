@@ -85,8 +85,8 @@ def main():
         'Tiberius_nosm': 'https://bioinf.uni-greifswald.de/bioinf/tiberius/models/tiberius_nosm_weights.tgz',
         'Tiberius_denovo': 'https://bioinf.uni-greifswald.de/bioinf/tiberius/models//tiberius_denovo_weights.tgz'
         }
-    
-    sys.path.append(args.learnMSA)    
+    print(f"learMSA path: {args.learnMSA}")
+    sys.path.insert(0, args.learnMSA)
     from eval_model_class import PredictionGTF
     from models import make_weighted_cce_loss        
     from genome_anno import Anno
