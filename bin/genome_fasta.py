@@ -56,7 +56,7 @@ class GenomeSequences:
             sequence = self.sequences[self.sequence_names.index(s)]
             # Create combined lookup table
             table = np.zeros((256, 6), dtype=np.uint8)
-            table[:, 4] = 1
+            table[:, 4] = 1 # N is encoded as [0, 0, 0, 0, 1, 0]
             
             # Set specific labels for A, C, G, T
             table[ord('A'), :] = [1, 0, 0, 0, 0, 0]
