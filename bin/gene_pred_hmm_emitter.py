@@ -158,6 +158,16 @@ class SimpleGenePredHMMEmitter(tf.keras.layers.Layer):
                 "temperature": self.temperature,
                 "share_intron_parameters": self.share_intron_parameters}
 
+    def set_lengths(self, lengths):
+        """
+        Sets the model lengths. from ProfileHMMEmitter.set_lengths
+        Args:
+            lengths: A list of model lengths.
+        """
+        pass
+        # self.lengths = lengths
+        # self.num_models = len(lengths)
+        # make sure the lengths are valid
 
 
 def assert_codons(codons):
