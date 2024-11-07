@@ -83,7 +83,7 @@ class GeneStructure:
         
     def translate_to_one_hot_hmm(self, sequence_names, sequence_lengths, transition=False):
         """Translate gene structure information to one-hot encoding.
-            7 classes IR, I0, I1, I2, E0, E1, E2
+            7 classes IR, I0, I1, I2, E0, E1, E2;15 classes Ir, I0, I1, I2, E0, E1, E2, START, EI0, EI1, EI2, IE0, IE1, IE2, STOP
 
         Arguments:
             sequence_names (list): Names of sequences.
@@ -100,13 +100,13 @@ class GeneStructure:
             self.one_hot[strand] = {seq : np.zeros((seq_l, numb_labels), dtype=np.int8) \
                 for seq, seq_l in zip(sequence_names, sequence_lengths)}
             for seq in sequence_names:
-                self.one_hot[strand][seq][:, 0] =  1                
+                self.one_hot[strand][seq][:, 0] =  1  # mean default intergenic region
 
         # Set the one-hot encoded positions for each gene structure
         for chromosome, feature, strand, phase, start, end in self.gene_structures:                          
             if feature == 'CDS':
                 exon_start = (3 - int(phase)) % 3
-                self.one_hot[strand][chromosome][start-1:end, 0] = 0
+                self.one_hot[strand][chromosome][start-1:end, 0] = 0 # genomics region.
                 
                 one_help = (np.linspace(0, end-start, end-start+1) + exon_start) % 3
                 if strand == '-':
