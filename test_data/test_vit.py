@@ -49,7 +49,7 @@ def main():
     
     genome_path = f'{inp_data_dir}/genome.fa' if not args.genome else args.genome
     annot_path= f'{inp_data_dir}/annot_{strand}.gtf' if not args.annot else args.annot
-    temp_dir = '' if args.no_temp else f'{out_dir}/temp'
+    temp_dir = '' if args.no_temp else f'{out_dir}/temp1'
     
     eval_dir = f'{out_dir}/eval'
     if not os.path.exists(eval_dir):
@@ -105,8 +105,14 @@ def main():
         warnings.warn('Oracle mode is on. Using correct labels as HMM input. Beware, this is only for debugging.')
         from gene_pred_hmm import make_aggregation_matrix
         encoding_layer_oracle = np.matmul(r_chunks.astype(np.float32), make_aggregation_matrix())
-        hmm_pred = pred_gtf.get_predictions(f_chunks, hmm_filter=True, clamsa_inp=clamsa_track, encoding_layer_oracle=encoding_layer_oracle)
+        hmm_pred = pred_gtf.get_predictions(
+            f_chunks,
+            hmm_filter=True,
+            clamsa_inp=clamsa_track,
+            encoding_layer_oracle=encoding_layer_oracle,
+        )
     else:
+        encoding_layer_oracle = None
         hmm_pred = pred_gtf.get_predictions(f_chunks, hmm_filter=True, clamsa_inp=clamsa_track)
 
     pred_gtf.create_gtf(y_label=hmm_pred, coords=coords,
@@ -195,12 +201,13 @@ def main():
         print('\n')
         print_class_freq(pred_label, name='GTF prediction', out=f'{eval_dir}/clas_freq.txt')
 
-        tpfnfp_lstm = pred_gtf.get_tp_fn_fp(lstm_label, annot_lstm)
+        print(f"lstmlabel: {lstm_label.shape}, pred_label: {pred_label.shape}, hmm_label: {hmm_label.shape}, annot_lstm: {annot_lstm.shape}")
+        tpfnfp_lstm = pred_gtf.get_tp_fn_fp(lstm_label[:annot_lstm.shape[0]], annot_lstm)
         metric_lstm = pred_gtf.calculate_metrics(tpfnfp_lstm)
         print_metrics(metric_lstm, name='LSTM')
 
         print('')
-        tpfnfp_hmm = pred_gtf.get_tp_fn_fp(hmm_label, annot_lstm)
+        tpfnfp_hmm = pred_gtf.get_tp_fn_fp(hmm_label[:annot_lstm.shape[0]], annot_lstm)
         metric_hmm = pred_gtf.calculate_metrics(tpfnfp_hmm)
         print_metrics(metric_hmm, name='HMM')
 
