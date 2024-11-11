@@ -26,7 +26,7 @@ class GeneStructure:
 
         self.gene_structures = []
 
-        # one hot encoding for each sequence (intergenic [0], CDS [1], intron [2])
+        # one hot encoding for each sequence (intergenic [0], intron [2], CDS [1])
         self.one_hot = None
         # one hot encoding for phase of CDS (0 [0], 1 [1], 2 [2], non coding [3])
         self.one_hot_phase = None
@@ -83,7 +83,7 @@ class GeneStructure:
         
     def translate_to_one_hot_hmm(self, sequence_names, sequence_lengths, transition=False):
         """Translate gene structure information to one-hot encoding.
-            7 classes IR, I0, I1, I2, E0, E1, E2;15 classes Ir, I0, I1, I2, E0, E1, E2, START, EI0, EI1, EI2, IE0, IE1, IE2, STOP
+            7 classes IR, I0, I1, I2, E0, E1, E2; 15 classes Ir, I0, I1, I2, E0, E1, E2, START, EI0, EI1, EI2, IE0, IE1, IE2, STOP
 
         Arguments:
             sequence_names (list): Names of sequences.
@@ -103,8 +103,8 @@ class GeneStructure:
                 self.one_hot[strand][seq][:, 0] =  1  # mean default intergenic region
 
         # Set the one-hot encoded positions for each gene structure
-        for chromosome, feature, strand, phase, start, end in self.gene_structures:                          
-            if feature == 'CDS':
+        for chromosome, feature, strand, phase, start, end in self.gene_structures:
+            if feature == 'CDS' and chromosome in self.one_hot[strand]:
                 exon_start = (3 - int(phase)) % 3
                 self.one_hot[strand][chromosome][start-1:end, 0] = 0 # genomics region.
                 
@@ -115,7 +115,7 @@ class GeneStructure:
                     np.eye(3)[one_help.astype(int)]
                     
         for chromosome, feature, strand, phase, start, end in self.gene_structures:  
-            if feature == 'intron':                
+            if feature == 'intron' and chromosome in self.one_hot[strand]:
                 if strand == '+':
                     idx = start - 2
                     if transition:
@@ -143,7 +143,7 @@ class GeneStructure:
                 
             # states : Ir, I0, I1, I2, E0, E1, E2, START, EI0, EI1, EI2, IE0, IE1, IE2, STOP
             for chromosome, feature, strand, phase, start, end in self.gene_structures:                          
-                if feature == 'CDS':
+                if feature == 'CDS' and chromosome in self.one_hot[strand]:
                     if strand == '+':
                         prev_condition = start - 2 < 0
                         prev = calculate_index(self.one_hot[strand][chromosome], start - 2, 7, 10, prev_condition)
