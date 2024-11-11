@@ -92,8 +92,10 @@ class GeneStructure:
         self.one_hot = {}
 
         numb_labels = 7
+        print("transition: ", transition)
         if transition:
-            numb_labels = 15
+            transition = False
+            numb_labels = 7
             
         # Initialize a numpy array to store the one-hot encoded positions
         for strand in ['+', '-']:
