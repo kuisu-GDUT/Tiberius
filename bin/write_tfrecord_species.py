@@ -1,4 +1,7 @@
 import sys, json, os, re, sys, csv, argparse
+from typing import Optional
+
+import tqdm
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 from transformers import AutoTokenizer, TFAutoModelForMaskedLM, TFEsmForMaskedLM
@@ -114,9 +117,11 @@ def get_species_data_hmm(genome_path='', annot_path='', species='', seq_len=5000
     if not annot_path:
         annot_path = f'/home/gabriell//deepl_data/annot_longest_fixed/{species}.gtf'
 
-    fasta = GenomeSequences(fasta_file=genome_path,
-                            chunksize=seq_len,
-                            overlap=overlap_size)
+    fasta = GenomeSequences(
+        fasta_file=genome_path,
+        chunksize=seq_len,
+        overlap=overlap_size
+    )
     fasta.encode_sequences()
     seqs = [len(s) for s in fasta.sequences]
     seq_names = fasta.sequence_names
@@ -186,17 +191,12 @@ def write_numpy(fasta, ref, out, ref_phase=None, split=100, trans=False, clamsa=
 
 
 def write_tf_record(fasta, ref, out, ref_phase=None, split=100, trans=False, clamsa=np.array([])):
-    fasta = fasta.astype(np.int32)          
-    ref = ref.astype(np.int32)
 
-    file_size = fasta.shape[0] // split
     indices = np.arange(fasta.shape[0])
     np.random.shuffle(indices)
     print(clamsa.shape, fasta.shape, trans)
     if ref_phase:
         ref_phase = ref_phase.astype(np.int32)
-    for k in range(split):
-        print(f'Writing split {k+1}/{split}')        
 
     def create_example(i):
         fasta_i = fasta[i, :, :].astype(np.int32)
@@ -318,33 +318,114 @@ def write_tf_record(fasta, ref, out, ref_phase=None, split=100,
                 writer.write(serialized_example)"""
 
 
+def write_species_data_hmm(
+        genome_path='',
+        annot_path='',
+        species='',
+        seq_len=500004,
+        overlap_size=0,
+        transition=False,
+        out_name='',
+        split=10,
+        args: Optional[dict] = None
+):
+    if not genome_path:
+        genome_path = f'/home/gabriell/deepl_data/genomes/{species}.fa.combined.masked'
+    if not annot_path:
+        annot_path = f'/home/gabriell//deepl_data/annot_longest_fixed/{species}.gtf'
+
+    fasta = GenomeSequences(
+        fasta_file=genome_path,
+        chunksize=seq_len,
+        overlap=overlap_size
+    )
+    ref_anno = GeneStructure(
+        annot_path,
+        chunksize=seq_len,
+        overlap=overlap_size
+    )
+    for seq_name in tqdm.tqdm(fasta.sequence_names, desc="Writing species data"):
+        seq_len = len(fasta.sequences[fasta.sequence_names.index(seq_name)])
+        print(f"process seq: {seq_name}, len:{seq_len}")
+        seq_lens = [seq_len]
+        seq_names = [seq_name]
+        out_seq_name = f"{out_name}_{seq_name}"
+
+        fasta.encode_sequences(seq=[seq_name])
+        # seqs = [len(s) for s in fasta.sequences]
+        # seq_names = fasta.sequence_names
+        f_chunk = fasta.get_flat_chunks(strand='+', sequence_name=seq_names, pad=False)
+        print(f_chunk.shape)
+        full_f_chunks = np.concatenate(
+            (f_chunk[::-1, ::-1, [3, 2, 1, 0, 4, 5]], f_chunk),
+            axis=0)
+
+        del f_chunk
+        # del fasta
+        print(full_f_chunks.shape)
+
+        ref_anno.translate_to_one_hot_hmm(
+            seq_names,
+            seq_lens,
+            transition=transition)
+
+        full_r_chunks = np.concatenate(
+            (ref_anno.get_flat_chunks_hmm(seq_names, strand='-'), ref_anno.get_flat_chunks_hmm(seq_names, strand='+')),
+            axis=0)
+
+        if args.transformer:
+            write_tf_record(full_f_chunks, full_r_chunks, out_seq_name, trans=True, split=split)
+        if args.clamsa:
+            # clamsa = get_clamsa_track('/home/gabriell/deepl_data/clamsa/wig/', seq_len=args.wsize, prefix=args.species)
+            clamsa = load_clamsa_data(args.clamsa, seq_names=args.seq_names, seq_len=args.wsize)
+            print('Loaded CLAMSA')
+            if args.np:
+                write_numpy(full_f_chunks, full_r_chunks, out_seq_name, clamsa=clamsa, split=split)
+            else:
+                write_tf_record(full_f_chunks, full_r_chunks, out_seq_name, clamsa=clamsa, split=split)
+        else:
+            if args.h5:
+                write_h5(full_f_chunks, full_r_chunks, out_seq_name, split=split)
+            elif args.np:
+                write_numpy(full_f_chunks, full_r_chunks, out_seq_name, split=split)
+            else:
+                write_tf_record(full_f_chunks, full_r_chunks, out_seq_name, split=split)
+
+
 def main():
     args = parseCmd()
 
-    fasta, ref = get_species_data_hmm(genome_path=args.fasta, annot_path=args.gtf,
-                                      species=args.species, seq_len=args.wsize,
-                                      overlap_size=0, transition=False)  # NOTE: defalut transition=True
+    write_species_data_hmm(
+        genome_path=args.fasta,
+        annot_path=args.gtf,
+        species=args.species,
+        seq_len=args.wsize,
+        overlap_size=0,
+        transition=False,
+        out_name=args.out,
+        args=args
+    )  # NOTE: defalut transition=True
 
-    print('Loaded FASTA and GTF', fasta.shape, ref.shape)
-    if args.transformer:
-        #         trans_emb = get_transformer_emb(ref, token_len = args.wsize//18)
-        #         print('AAA')
-        write_tf_record(fasta, ref, args.out, trans=True)
-    if args.clamsa:
-        # clamsa = get_clamsa_track('/home/gabriell/deepl_data/clamsa/wig/', seq_len=args.wsize, prefix=args.species)
-        clamsa = load_clamsa_data(args.clamsa, seq_names=args.seq_names, seq_len=args.wsize)
-        print('Loaded CLAMSA')
-        if args.np:
-            write_numpy(fasta, ref, args.out, clamsa=clamsa)
-        else:
-            write_tf_record(fasta, ref, args.out, clamsa=clamsa)
-    else:
-        if args.h5:
-            write_h5(fasta, ref, args.out)
-        elif args.np:
-            write_numpy(fasta, ref, args.out)
-        else:
-            write_tf_record(fasta, ref, args.out)
+    # print('Loaded FASTA and GTF', fasta.shape, ref.shape)
+    # if args.transformer:
+    #     #         trans_emb = get_transformer_emb(ref, token_len = args.wsize//18)
+    #     #         print('AAA')
+    #     write_tf_record(fasta, ref, args.out, trans=True)
+    # if args.clamsa:
+    #     # clamsa = get_clamsa_track('/home/gabriell/deepl_data/clamsa/wig/', seq_len=args.wsize, prefix=args.species)
+    #     clamsa = load_clamsa_data(args.clamsa, seq_names=args.seq_names, seq_len=args.wsize)
+    #     print('Loaded CLAMSA')
+    #     if args.np:
+    #         write_numpy(fasta, ref, args.out, clamsa=clamsa)
+    #     else:
+    #         write_tf_record(fasta, ref, args.out, clamsa=clamsa)
+    # else:
+    #     if args.h5:
+    #         write_h5(fasta, ref, args.out)
+    #     elif args.np:
+    #         write_numpy(fasta, ref, args.out)
+    #     else:
+    #         write_tf_record(fasta, ref, args.out)
 
 
 def parseCmd():
