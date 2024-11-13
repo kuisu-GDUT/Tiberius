@@ -527,6 +527,7 @@ def train_lstm_model(generator, model_save_dir, config, val_data=None, model_loa
         labels = np.concatenate(labels, axis=0)
         cal_metric(labels, y_predicts)
 
+
 def cal_metric(y_true, y_pred):
     """Calculates the Matthews correlation coefficient for binary classification.
 
