@@ -11,6 +11,7 @@
 import glob
 
 import parse_args
+from bend_dataset import BendDataset, pytorch_to_tensorflow_dataset
 
 args = parse_args.parseCmd()
 import sys, os, re, json, sys, csv
@@ -24,6 +25,7 @@ import numpy as np
 from tensorflow.keras.callbacks import ModelCheckpoint
 from data_generator import DataGenerator
 from tensorflow.keras.optimizers import Adam, SGD
+from tensorflow.keras import backend as K
 import tensorflow.keras as keras
 from tensorflow.keras.callbacks import CSVLogger
 import models
@@ -42,6 +44,120 @@ gpus = tf.config.list_physical_devices('GPU')
 strategy = tf.distribute.MirroredStrategy()
 
 batch_save_numb = 1000
+
+
+class MatthewsCorrelationCoefficient(tf.keras.metrics.Metric):
+    """Computes the Matthews Correlation Coefficient.
+
+    The statistic is also known as the phi coefficient.
+    The Matthews correlation coefficient (MCC) is used in
+    machine learning as a measure of the quality of binary
+    and multiclass classifications. It takes into account
+    true and false positives and negatives and is generally
+    regarded as a balanced measure which can be used even
+    if the classes are of very different sizes. The correlation
+    coefficient value of MCC is between -1 and +1. A
+    coefficient of +1 represents a perfect prediction,
+    0 an average random prediction and -1 an inverse
+    prediction. The statistic is also known as
+    the phi coefficient.
+
+    MCC = (TP * TN - FP * FN) /
+          ((TP + FP) * (TP + FN) * (TN + FP) * (TN + FN))^(1/2)
+
+    Args:
+        num_classes : Number of unique classes in the dataset.
+        name: (Optional) String name of the metric instance.
+        dtype: (Optional) Data type of the metric result.
+
+    Usage:
+
+    >>> y_true = np.array([[0.0, 1.0], [0.0, 1.0], [0.0, 1.0], [1.0, 0.0]], dtype=np.float32)
+    >>> y_pred = np.array([[0.0, 1.0], [1.0, 0.0], [0.0, 1.0], [0.0, 1.0]], dtype=np.float32)
+    >>> metric = tfa.metrics.MatthewsCorrelationCoefficient(num_classes=2)
+    >>> metric.update_state(y_true, y_pred)
+    >>> result = metric.result()
+    >>> result.numpy()
+    -0.33333334
+    """
+
+    def __init__(
+            self,
+            num_classes,
+            name: str = "MatthewsCorrelationCoefficient",
+            dtype=None,
+            **kwargs,
+    ):
+        """Creates a Matthews Correlation Coefficient instance."""
+        super().__init__(name=name, dtype=dtype)
+        self.num_classes = num_classes
+        self.conf_mtx = self.add_weight(
+            "conf_mtx",
+            shape=(self.num_classes, self.num_classes),
+            initializer=tf.keras.initializers.zeros,
+            dtype=self.dtype,
+        )
+
+    # TODO: sample_weights
+    def update_state(self, y_true, y_pred, sample_weight=None):
+        print(f"y_true shape: {y_true.shape}; y_pred shape: {y_pred.shape}")
+        y_true = tf.cast(y_true, dtype=self.dtype)
+        y_pred = tf.cast(y_pred, dtype=self.dtype)
+
+        new_conf_mtx = tf.math.confusion_matrix(
+            labels=tf.argmax(y_true, -1),
+            predictions=tf.argmax(y_pred, -1),
+            num_classes=self.num_classes,
+            weights=sample_weight,
+            dtype=self.dtype,
+        )
+
+        self.conf_mtx.assign_add(new_conf_mtx)
+
+    def result(self):
+
+        true_sum = tf.reduce_sum(self.conf_mtx, axis=1)
+        pred_sum = tf.reduce_sum(self.conf_mtx, axis=0)
+        num_correct = tf.linalg.trace(self.conf_mtx)
+        num_samples = tf.reduce_sum(pred_sum)
+
+        # covariance true-pred
+        cov_ytyp = num_correct * num_samples - tf.tensordot(true_sum, pred_sum, axes=1)
+        # covariance pred-pred
+        cov_ypyp = num_samples ** 2 - tf.tensordot(pred_sum, pred_sum, axes=1)
+        # covariance true-true
+        cov_ytyt = num_samples ** 2 - tf.tensordot(true_sum, true_sum, axes=1)
+
+        mcc = cov_ytyp / tf.math.sqrt(cov_ytyt * cov_ypyp)
+
+        if tf.math.is_nan(mcc):
+            mcc = tf.constant(0, dtype=self.dtype)
+
+        return mcc
+
+    def get_config(self):
+        """Returns the serializable config of the metric."""
+
+        config = {
+            "num_classes": self.num_classes,
+        }
+        base_config = super().get_config()
+        return {**base_config, **config}
+
+    def reset_state(self):
+        """Resets all of the metric state variables."""
+
+        for v in self.variables:
+            K.set_value(
+                v,
+                np.zeros((self.num_classes, self.num_classes), v.dtype.as_numpy_dtype),
+            )
+
+    def reset_states(self):
+        # Backwards compatibility alias of `reset_state`. New classes should
+        # only implement `reset_state`.
+        # Required in Tensorflow < 2.5.0
+        return self.reset_state()
 
 
 def train_hmm_model(generator, model_save_dir, config, val_data=None,
@@ -374,29 +490,46 @@ def train_lstm_model(generator, model_save_dir, config, val_data=None, model_loa
         if model_load:
             model.load_weights(model_load + '/variables/variables')
         if config["loss_weights"]:
-            model.compile(loss=cce_loss, optimizer=optimizer,
-                          metrics=['accuracy'],  # sample_weight_mode='temporal',
-                          loss_weights=config["loss_weights"]
-                          )
+            model.compile(
+                loss=cce_loss,
+                optimizer=optimizer,
+                metrics=[
+                    'accuracy',
+                    # MatthewsCorrelationCoefficient(num_classes=9)
+                ],
+                sample_weight_mode='temporal',
+                loss_weights=config["loss_weights"]
+            )
         else:
-            model.compile(loss=cce_loss, optimizer=optimizer,
-                          metrics=['accuracy'])
+            model.compile(
+                loss=cce_loss, optimizer=optimizer,
+                metrics=['accuracy'])
         model.summary()
 
-        model.fit(generator, epochs=2000, validation_data=val_data,
-                  steps_per_epoch=1000,
-                  callbacks=[epoch_callback, csv_logger])
+        model.fit(
+            generator,
+            epochs=10,
+            validation_data=val_data,
+            steps_per_epoch=1000,
+            callbacks=[epoch_callback, csv_logger]
+        )
 
 
-def load_bend_data(file):
+def load_bend_data(dest_path=None, batch_size=4, max_length=99999, split="train"):
     # load bend data
-    pass
-
-file_paths = []
+    bend_data = BendDataset(
+        dest_path=dest_path,
+        split=split,
+        dataset_name="gene_finding",
+        max_length=max_length,
+        read_strand=False,
+    )
+    bend_dataset = pytorch_to_tensorflow_dataset(bend_data)
+    bend_dataset = bend_dataset.batch(batch_size).prefetch(tf.data.AUTOTUNE)
+    return bend_dataset
 
 
 def main():
-    global file_paths
     # currently only w_size=9999 is used
     w_size = 9999
     if w_size == 99999:
@@ -406,7 +539,7 @@ def main():
         batch_size = 28
         batch_save_numb = 100000
     elif w_size == 9999:
-        batch_size = 128
+        batch_size = 16
         batch_save_numb = 1000
     elif w_size == 29997:
         batch_size = 120 * 4
@@ -421,7 +554,7 @@ def main():
             "loss_weights": False,
             # [1,1,1e3,1e3,1e3],
             # [ 0.24064536,  1.23309401, 89.06682408, 89.68105166, 89.5963385 ],<- computed from class frequencies in train data
-            # "loss_weights": [1.0, 1.0, 100.0, 100.0, 100.0],#[1., 1., 1., 1., 1.],
+            "loss_weights": [6.37, 1485.62, 1.52, 1485.62, 6.11, 1438.04, 1.52, 1438.04, 1.0],  # [1., 1., 1., 1., 1.],
             # [1.0, 5.0, 5.0, 5.0, 15.0, 15.0, 15.0],#[0.33, 1.0, 1.0, 1.0, 3.0, 3.0, 3.0],#
             # binary weights: [0.5033910039153116, 74.22447990141231]
             "stride": 0,  # if > 0 reduces size of sequence CNN stride
@@ -443,7 +576,7 @@ def main():
             "trainable_lstm": True,  # if False, LSTM is not trainable -> only HMM is trained
             # output_size determines the shape of all outputs and the labels
             # hmm code will try to adapt if output size of loaded lstm is different to this number
-            'output_size': 5,  # default 15
+            'output_size': 9,  # default 15
             'multi_loss': False,  # if both this and use_hmm are True, uses a additional LSTM loss during training
             'l2_lambda': 0.,
             'temperature': 32 * 3,
@@ -480,85 +613,33 @@ def main():
     config_dict['model_load_hmm'] = os.path.abspath(args.load_hmm) if args.load_hmm else None
     config_dict['nuc_trans'] = args.nuc_trans
 
-    data_path = args.data
-
     # write config file
     with open(f'{config_dict["model_save_dir"]}/config.json', 'w+') as f:
         json.dump(config_dict, f)
 
-    for d in [config_dict["model_save_dir"], data_path]:
-        if not os.path.exists(d):
-            os.mkdir(d)
-
-    # get paths of tfrecord files
-    species_file = f'{data_path}/{args.train_species_file}'
-    species = read_species(os.path.join(data_path, args.train_species_file))
-    for specie in species:
-        specie_file_paths = glob.glob(f'{data_path}/{specie}_*.tfrecords')
-        file_paths.extend(specie_file_paths)
-
     # init tfrecord generator
-    generator = DataGenerator(
-        file_path=file_paths,
-        batch_size=config_dict['batch_size'],
-        shuffle=True,
-        repeat=True,
-        filter=config_dict["filter"],
-        output_size=config_dict["output_size"],
-        hmm_factor=0,
-        seq_weights=config_dict["seq_weights"],
-        softmasking=config_dict["softmasking"],
-        clamsa=False if not "clamsa" in config_dict else config_dict["clamsa"],
-        trans_lstm=config_dict['nuc_trans'],
-        oracle=False if 'oracle' not in config_dict else config_dict['oracle']
-    )
+    dest_path = "/home/share/huadjyin/home/s_liulin4/datasets/Gene_annotation_test/BEND"
+    generator = load_bend_data(dest_path=dest_path, batch_size=batch_size, split="train")
 
-    if args.val_species_file:
-        # val_data = load_val_data(
-        #     args.val_data,
-        #     hmm_factor=0,
-        #     output_size=config_dict["output_size"],
-        #     clamsa=config_dict["clamsa"], softmasking=config_dict["softmasking"],
-        #     oracle=False if 'oracle' not in config_dict else config_dict['oracle']
-        # )
-        val_species = read_species(os.path.join(data_path, args.val_species_file))
-        val_files = []
-        for specie in val_species:
-            specie_file_paths = glob.glob(f'{data_path}/{specie}_*.tfrecords')
-            val_files.extend(specie_file_paths)
-        print("val_files: ", val_files)
-        val_data = DataGenerator(
-            file_path=val_files,
-            batch_size=config_dict['batch_size'],
-            shuffle=True,
-            repeat=True,
-            filter=config_dict["filter"],
-            output_size=config_dict["output_size"],
-            hmm_factor=0,
-            seq_weights=config_dict["seq_weights"],
-            softmasking=config_dict["softmasking"],
-            clamsa=False if not "clamsa" in config_dict else config_dict["clamsa"],
-            trans_lstm=config_dict['nuc_trans'],
-            oracle=False if 'oracle' not in config_dict else config_dict['oracle']
-        )
-    else:
-        val_data = None
+    val_data = load_bend_data(dest_path=dest_path, batch_size=batch_size, split="valid")
 
     if args.hmm:
-        train_hmm_model(generator=generator, val_data=val_data,
-                        model_save_dir=config_dict["model_save_dir"], config=config_dict,
-                        model_load_lstm=config_dict["model_load_lstm"],
-                        model_load_hmm=config_dict["model_load_hmm"],
-                        model_load=config_dict["model_load"],
-                        trainable=config_dict["trainable_lstm"],
-                        constant_hmm=config_dict["constant_hmm"]
-                        )
+        train_hmm_model(
+            generator=generator, val_data=val_data,
+            model_save_dir=config_dict["model_save_dir"], config=config_dict,
+            model_load_lstm=config_dict["model_load_lstm"],
+            model_load_hmm=config_dict["model_load_hmm"],
+            model_load=config_dict["model_load"],
+            trainable=config_dict["trainable_lstm"],
+            constant_hmm=config_dict["constant_hmm"]
+        )
     elif args.clamsa:
-        train_clamsa(generator=generator,
-                     model_save_dir=config_dict["model_save_dir"],
-                     config=config_dict,
-                     model_load=config_dict["model_load"],
-                     model_load_lstm=config_dict["model_load_lstm"])
+        train_clamsa(
+            generator=generator,
+            model_save_dir=config_dict["model_save_dir"],
+            config=config_dict,
+            model_load=config_dict["model_load"],
+            model_load_lstm=config_dict["model_load_lstm"])
     elif args.nuc_trans:
         train_add_transformer2lstm(generator=generator,
                                    model_save_dir=config_dict["model_save_dir"],

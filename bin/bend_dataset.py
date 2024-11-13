@@ -169,9 +169,14 @@ class BendDataset(Dataset):
             start_idx, end_idx = random_sample_seq(seq, self.max_length)
             seq = seq[start_idx:end_idx]
             label = label[start_idx:end_idx]
+        else:
+            pad_num  = self.max_length - len(seq)
+            seq += 'N' * pad_num
+            label += [0] * pad_num
         input_ids = self.tokenizer(seq)
         input_ids = np.array(input_ids, dtype=np.int64)
         label = np.array(label, dtype=np.int64)
+        label = np.eye(9)[label]
         # print(f"input_ids shape: {input_ids.shape}, label shape: {label.shape}")
         return input_ids, label
 
@@ -210,7 +215,7 @@ def pytorch_to_tensorflow_dataset(pytorch_dataset):
         generator,
         output_signature=(
             tf.TensorSpec(shape=[None, 6], dtype=tf.int32),
-            tf.TensorSpec(shape=[None], dtype=tf.int32)
+            tf.TensorSpec(shape=[None, 9], dtype=tf.int32)
         ))
 
 
@@ -220,7 +225,7 @@ if __name__ == '__main__':
         dest_path=dest_path,
         split="test",
         dataset_name="gene_finding",
-        max_length=512,
+        max_length=9999,
         read_strand=False,
     )
     tf_dataset = pytorch_to_tensorflow_dataset(bend_data)

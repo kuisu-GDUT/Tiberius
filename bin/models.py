@@ -92,8 +92,16 @@ def custom_cce_f1_loss(f1_factor, batch_size,
                 cds_pred = y_pred[:, :, -3:]
                 cds_true = y_true[:, :, -3:]
             else:
-                cds_pred = tf.reduce_sum(y_pred[:, :, -3:], axis=-1, keepdims=True) 
+                cds_pred = tf.reduce_sum(y_pred[:, :, -3:], axis=-1, keepdims=True)
                 cds_true = tf.reduce_sum(y_true[:, :, -3:], axis=-1, keepdims=True)
+        elif tf.shape(y_true)[-1] == 9:  # FOR BEND task: ()
+            cds_index = tf.constant([0, 1, 3, 4, 5, 7], dtype=tf.int32)
+            if include_reading_frame:
+                cds_pred = tf.gather(y_pred, cds_index, axis=-1)
+                cds_true = tf.gather(y_true, cds_index, axis=-1)
+            else:
+                cds_pred = tf.reduce_sum(tf.gather(y_pred, cds_index, axis=-1), axis=-1, keepdims=True)
+                cds_true = tf.reduce_sum(tf.gather(y_true, cds_index, axis=-1), axis=-1, keepdims=True)
         else:
             if include_reading_frame:
                 cds_pred = y_pred[:, :, 4:]
