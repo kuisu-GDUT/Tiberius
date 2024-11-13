@@ -10,6 +10,8 @@
 # ==============================================================
 import glob
 
+from sklearn.metrics import matthews_corrcoef, f1_score, accuracy_score, recall_score, precision_score
+
 import parse_args
 from bend_dataset import BendDataset, pytorch_to_tensorflow_dataset
 
@@ -508,11 +510,47 @@ def train_lstm_model(generator, model_save_dir, config, val_data=None, model_loa
 
         model.fit(
             generator,
-            epochs=10,
+            epochs=4,
             validation_data=val_data,
-            steps_per_epoch=1000,
+            steps_per_epoch=500,
             callbacks=[epoch_callback, csv_logger]
         )
+
+        y_predicts = []
+        labels = []
+        for val_i_data in val_data:
+            feature, label = val_i_data
+            y_pred = model.predict_on_batch(feature, )
+            y_predicts.append(y_pred)
+            labels.append(label)
+        y_predicts = np.concatenate(y_predicts, axis=0)
+        labels = np.concatenate(labels, axis=0)
+        cal_metric(labels, y_predicts)
+
+def cal_metric(y_true, y_pred):
+    """Calculates the Matthews correlation coefficient for binary classification.
+
+    Parameters:
+        - y_true (array): True binary labels.
+        - y_pred (array): Predicted binary labels.
+
+    Returns:
+        - float: Matthews
+    """
+    y_true = np.argmax(y_true, axis=-1)
+    y_pred = np.argmax(y_pred, axis=-1)
+
+    label = y_true.reshape(-1)
+    predict = y_pred.reshape(-1)
+    result = {
+        'mcc_score': matthews_corrcoef(label, predict),
+        'f1_score': f1_score(label, predict),
+        'accuracy_score': accuracy_score(label, predict),
+        'recall_score': recall_score(label, predict),
+        'precision_score': precision_score(label, predict),
+        # 'roc_auc_score': roc_auc_score(label, predict),
+    }
+    print(f"eval metric: \n{json.dumps(result)}")
 
 
 def load_bend_data(dest_path=None, batch_size=4, max_length=99999, split="train"):
