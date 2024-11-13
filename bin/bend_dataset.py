@@ -7,9 +7,9 @@ import numpy as np
 import pandas as pd
 import pysam
 from tqdm.auto import tqdm
-import tensorflow as tf
 
 from torch.utils.data import Dataset
+import tensorflow as tf
 from transformers import PreTrainedTokenizerBase, DataCollatorWithPadding
 import h5py
 
@@ -170,10 +170,10 @@ class BendDataset(Dataset):
             seq = seq[start_idx:end_idx]
             label = label[start_idx:end_idx]
         input_ids = self.tokenizer(seq)
-        return {
-            'labels': label,
-            "input_ids": input_ids,
-        }
+        input_ids = np.array(input_ids, dtype=np.int64)
+        label = np.array(label, dtype=np.int64)
+        # print(f"input_ids shape: {input_ids.shape}, label shape: {label.shape}")
+        return input_ids, label
 
     @staticmethod
     def tokenizer(sequence):
@@ -204,12 +204,12 @@ def pytorch_to_tensorflow_dataset(pytorch_dataset):
     # 使用tf.py_function来包装PyTorch Dataset的__getitem__方法
     def generator():
         for data, label in pytorch_dataset:
-            yield tf.convert_to_tensor(data, dtype=tf.float32), tf.convert_to_tensor(label, dtype=tf.int32)
+            yield tf.convert_to_tensor(data, dtype=tf.int32), tf.convert_to_tensor(label, dtype=tf.int32)
 
     return tf.data.Dataset.from_generator(
         generator,
         output_signature=(
-            tf.TensorSpec(shape=[None, 3, 224, 224], dtype=tf.float32),
+            tf.TensorSpec(shape=[None, 6], dtype=tf.int32),
             tf.TensorSpec(shape=[None], dtype=tf.int32)
         ))
 
@@ -224,8 +224,8 @@ if __name__ == '__main__':
         read_strand=False,
     )
     tf_dataset = pytorch_to_tensorflow_dataset(bend_data)
-    tf_dataset = tf_dataset.batch(32).prefetch(tf.data.AUTOTUNE)
-    first_batch = next(iter(tf_dataset.take(1)))
+    tf_dataset = tf_dataset.batch(4).prefetch(tf.data.AUTOTUNE)
+    first_batch = next(iter(tf_dataset.take(2)))
     features, labels = first_batch
     print(features.shape, labels.shape)
 
