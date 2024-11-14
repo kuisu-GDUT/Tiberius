@@ -490,7 +490,13 @@ def train_lstm_model(generator, model_save_dir, config, val_data=None, model_loa
         relevant_args = {key: config[key] for key in relevant_keys if key in config}
         model = lstm_model(**relevant_args)
         if model_load:
+            print(f"load model weight in: {model_load}")
+            # ckpt = tf.train.Checkpoint(model=model)
+            # model_load = "~"+model_load.split("~")[-1]
+            # status = ckpt.restore(model_load + '/variables/variables').expect_partial()
+            # print(f"status: {status}")
             model.load_weights(model_load + '/variables/variables')
+            eval_bend_data(model, val_data)
         if config["loss_weights"]:
             model.compile(
                 loss=cce_loss,
@@ -510,22 +516,25 @@ def train_lstm_model(generator, model_save_dir, config, val_data=None, model_loa
 
         model.fit(
             generator,
-            epochs=4,
+            epochs=2,
             validation_data=val_data,
-            steps_per_epoch=500,
+            steps_per_epoch=100,
             callbacks=[epoch_callback, csv_logger]
         )
+        eval_bend_data(model, val_data)
 
-        y_predicts = []
-        labels = []
-        for val_i_data in val_data:
-            feature, label = val_i_data
-            y_pred = model.predict_on_batch(feature, )
-            y_predicts.append(y_pred)
-            labels.append(label)
-        y_predicts = np.concatenate(y_predicts, axis=0)
-        labels = np.concatenate(labels, axis=0)
-        cal_metric(labels, y_predicts)
+
+def eval_bend_data(model, val_data):
+    y_predicts = []
+    labels = []
+    for val_i_data in val_data:
+        feature, label = val_i_data
+        y_pred = model.predict_on_batch(feature)
+        y_predicts.append(y_pred)
+        labels.append(label)
+    y_predicts = np.concatenate(y_predicts, axis=0)
+    labels = np.concatenate(labels, axis=0)
+    cal_metric(labels, y_predicts)
 
 
 def cal_metric(y_true, y_pred):
@@ -538,19 +547,31 @@ def cal_metric(y_true, y_pred):
     Returns:
         - float: Matthews
     """
+    binary_classification = y_pred.shape[-1] == 2
     y_true = np.argmax(y_true, axis=-1)
     y_pred = np.argmax(y_pred, axis=-1)
 
     label = y_true.reshape(-1)
     predict = y_pred.reshape(-1)
-    result = {
-        'mcc_score': matthews_corrcoef(label, predict),
-        'f1_score': f1_score(label, predict),
-        'accuracy_score': accuracy_score(label, predict),
-        'recall_score': recall_score(label, predict),
-        'precision_score': precision_score(label, predict),
-        # 'roc_auc_score': roc_auc_score(label, predict),
-    }
+    if binary_classification:
+        result = {
+            'mcc_score': matthews_corrcoef(label, predict),
+            'f1_score': f1_score(label, predict),
+            'accuracy_score': accuracy_score(label, predict),
+            'recall_score': recall_score(label, predict),
+            'precision_score': precision_score(label, predict),
+            # 'roc_auc_score': roc_auc_score(label, predict),
+        }
+    else:
+        # fix sum up to 1.0 over classes
+        # pred_prob = np.exp(pred_prob) / np.sum(np.exp(pred_prob), axis=1, keepdims=True)
+        result = {
+            'mcc_score': matthews_corrcoef(label, predict),
+            'f1_score': f1_score(label, predict, average='macro'),
+            'accuracy_score': accuracy_score(label, predict),
+            'recall_score': recall_score(label, predict, average='macro'),
+            'precision_score': precision_score(label, predict, average='macro'),
+        }
     print(f"eval metric: \n{json.dumps(result)}")
 
 
@@ -593,7 +614,7 @@ def main():
             "loss_weights": False,
             # [1,1,1e3,1e3,1e3],
             # [ 0.24064536,  1.23309401, 89.06682408, 89.68105166, 89.5963385 ],<- computed from class frequencies in train data
-            "loss_weights": [6.37, 1485.62, 1.52, 1485.62, 6.11, 1438.04, 1.52, 1438.04, 1.0],  # [1., 1., 1., 1., 1.],
+            "loss_weights": [6.37, 1485.62, 1.52, 1485.62, 6.11, 1438.04, 1.52, 1438.04, 1.0,1.0,1.0,1.0,1.0,1.0,1.0],  # [1., 1., 1., 1., 1.],
             # [1.0, 5.0, 5.0, 5.0, 15.0, 15.0, 15.0],#[0.33, 1.0, 1.0, 1.0, 3.0, 3.0, 3.0],#
             # binary weights: [0.5033910039153116, 74.22447990141231]
             "stride": 0,  # if > 0 reduces size of sequence CNN stride
@@ -615,7 +636,7 @@ def main():
             "trainable_lstm": True,  # if False, LSTM is not trainable -> only HMM is trained
             # output_size determines the shape of all outputs and the labels
             # hmm code will try to adapt if output size of loaded lstm is different to this number
-            'output_size': 9,  # default 15
+            'output_size': 15,  # default 15
             'multi_loss': False,  # if both this and use_hmm are True, uses a additional LSTM loss during training
             'l2_lambda': 0.,
             'temperature': 32 * 3,

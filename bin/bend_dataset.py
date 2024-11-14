@@ -176,7 +176,7 @@ class BendDataset(Dataset):
         input_ids = self.tokenizer(seq)
         input_ids = np.array(input_ids, dtype=np.int64)
         label = np.array(label, dtype=np.int64)
-        label = np.eye(9)[label]
+        label = np.eye(15)[label]
         # print(f"input_ids shape: {input_ids.shape}, label shape: {label.shape}")
         return input_ids, label
 
@@ -215,7 +215,7 @@ def pytorch_to_tensorflow_dataset(pytorch_dataset):
         generator,
         output_signature=(
             tf.TensorSpec(shape=[None, 6], dtype=tf.int32),
-            tf.TensorSpec(shape=[None, 9], dtype=tf.int32)
+            tf.TensorSpec(shape=[None, 15], dtype=tf.int32)
         ))
 
 
