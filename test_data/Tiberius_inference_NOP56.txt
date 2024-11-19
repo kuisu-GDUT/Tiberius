@@ -1,0 +1,43 @@
+browser position chr20:2,652,632-2,658,393
+browser hide all
+track name=Tiberius description="NOP56 Regions" visibility=2
+chr20	Tiberius	gene	2652662	2658295	500	+	.	g1
+chr20	Tiberius	transcript	2652662	2658295	500	+	.	g1.t1_transcript
+chr20	Tiberius	CDS	2652662	2652664	500	+	0	transcript_id "g1.t1_CDS"; gene_id "g1"; cds_type=initial
+chr20	Tiberius	exon	2652662	2652664	500	+	0	transcript_id "g1.t1_exon"; gene_id "g1"; cds_type=initial
+chr20	Tiberius	intron	2652665	2652842	500	+	0	transcript_id "g1.t1_intron"; gene_id "g1"; cds_type=terminal
+chr20	Tiberius	CDS	2652843	2652932	500	+	0	transcript_id "g1.t1_CDS"; gene_id "g1"; cds_type=initial
+chr20	Tiberius	exon	2652843	2652932	500	+	0	transcript_id "g1.t1_exon"; gene_id "g1"; cds_type=initial
+chr20	Tiberius	intron	2652933	2653279	500	+	0	transcript_id "g1.t1_intron"; gene_id "g1"; cds_type=terminal
+chr20	Tiberius	CDS	2653280	2653394	500	+	0	transcript_id "g1.t1_CDS"; gene_id "g1"; cds_type=initial
+chr20	Tiberius	exon	2653280	2653394	500	+	0	transcript_id "g1.t1_exon"; gene_id "g1"; cds_type=initial
+chr20	Tiberius	intron	2653395	2654414	500	+	2	transcript_id "g1.t1_intron"; gene_id "g1"; cds_type=terminal
+chr20	Tiberius	CDS	2654415	2654576	500	+	2	transcript_id "g1.t1_CDS"; gene_id "g1"; cds_type=initial
+chr20	Tiberius	exon	2654415	2654576	500	+	2	transcript_id "g1.t1_exon"; gene_id "g1"; cds_type=initial
+chr20	Tiberius	intron	2654577	2654749	500	+	2	transcript_id "g1.t1_intron"; gene_id "g1"; cds_type=terminal
+chr20	Tiberius	CDS	2654750	2654948	500	+	2	transcript_id "g1.t1_CDS"; gene_id "g1"; cds_type=initial
+chr20	Tiberius	exon	2654750	2654948	500	+	2	transcript_id "g1.t1_exon"; gene_id "g1"; cds_type=initial
+chr20	Tiberius	intron	2654949	2655325	500	+	1	transcript_id "g1.t1_intron"; gene_id "g1"; cds_type=terminal
+chr20	Tiberius	CDS	2655326	2655513	500	+	1	transcript_id "g1.t1_CDS"; gene_id "g1"; cds_type=initial
+chr20	Tiberius	exon	2655326	2655513	500	+	1	transcript_id "g1.t1_exon"; gene_id "g1"; cds_type=initial
+chr20	Tiberius	intron	2655514	2655595	500	+	2	transcript_id "g1.t1_intron"; gene_id "g1"; cds_type=terminal
+chr20	Tiberius	CDS	2655596	2655747	500	+	2	transcript_id "g1.t1_CDS"; gene_id "g1"; cds_type=initial
+chr20	Tiberius	exon	2655596	2655747	500	+	2	transcript_id "g1.t1_exon"; gene_id "g1"; cds_type=initial
+chr20	Tiberius	intron	2655748	2655934	500	+	0	transcript_id "g1.t1_intron"; gene_id "g1"; cds_type=terminal
+chr20	Tiberius	CDS	2655935	2656035	500	+	0	transcript_id "g1.t1_CDS"; gene_id "g1"; cds_type=initial
+chr20	Tiberius	exon	2655935	2656035	500	+	0	transcript_id "g1.t1_exon"; gene_id "g1"; cds_type=initial
+chr20	Tiberius	intron	2656036	2656401	500	+	1	transcript_id "g1.t1_intron"; gene_id "g1"; cds_type=terminal
+chr20	Tiberius	CDS	2656402	2656550	500	+	1	transcript_id "g1.t1_CDS"; gene_id "g1"; cds_type=initial
+chr20	Tiberius	exon	2656402	2656550	500	+	1	transcript_id "g1.t1_exon"; gene_id "g1"; cds_type=initial
+chr20	Tiberius	intron	2656551	2656774	500	+	2	transcript_id "g1.t1_intron"; gene_id "g1"; cds_type=terminal
+chr20	Tiberius	CDS	2656775	2656896	500	+	2	transcript_id "g1.t1_CDS"; gene_id "g1"; cds_type=initial
+chr20	Tiberius	exon	2656775	2656896	500	+	2	transcript_id "g1.t1_exon"; gene_id "g1"; cds_type=initial
+chr20	Tiberius	intron	2656897	2657081	500	+	0	transcript_id "g1.t1_intron"; gene_id "g1"; cds_type=terminal
+chr20	Tiberius	CDS	2657082	2657219	500	+	0	transcript_id "g1.t1_CDS"; gene_id "g1"; cds_type=initial
+chr20	Tiberius	exon	2657082	2657219	500	+	0	transcript_id "g1.t1_exon"; gene_id "g1"; cds_type=initial
+chr20	Tiberius	intron	2657220	2657929	500	+	0	transcript_id "g1.t1_intron"; gene_id "g1"; cds_type=terminal
+chr20	Tiberius	CDS	2657930	2658295	500	+	0	transcript_id "g1.t1_CDS"; gene_id "g1"; cds_type=terminal
+chr20	Tiberius	exon	2657930	2658295	500	+	0	transcript_id "g1.t1_exon"; gene_id "g1"; cds_type=terminal
+
+
+

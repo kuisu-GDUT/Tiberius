@@ -8,6 +8,7 @@
 # Tensorflow 2.10.1, Transformers 4.31.0, 
 # tensorflow_probability 0.18.0
 # ==============================================================
+import glob
 
 import parse_args
 
@@ -106,9 +107,9 @@ def train_hmm_model(generator, model_save_dir, config, val_data=None,
                 model_hmm = keras.models.load_model(model_load_hmm,
                                                     custom_objects={'custom_cce_f1_loss': custom_cce_f1_loss(
                                                         config['loss_f1_factor'], config['batch_size']),
-                                                                    'loss_': custom_cce_f1_loss(
-                                                                        config['loss_f1_factor'],
-                                                                        config['batch_size'])})
+                                                        'loss_': custom_cce_f1_loss(
+                                                            config['loss_f1_factor'],
+                                                            config['batch_size'])})
                 gene_pred_layer = model_hmm.layers[-3]
             else:
                 gene_pred_layer = None
@@ -546,9 +547,12 @@ def main():
             os.mkdir(d)
 
     # get paths of tfrecord files
-    species_file = f'{args.data}/{args.train_species_file}'
-    species = read_species(species_file)
-    file_paths = [f'{data_path}/{s}_{i}.tfrecords' for s in species for i in range(99)]
+    species_file = f'{data_path}/{args.train_species_file}'
+    species = read_species(os.path.join(data_path, args.train_species_file))
+    for specie in species:
+        specie_file_paths = glob.glob(f'{data_path}/{specie}_*.tfrecords')
+        file_paths.extend(specie_file_paths)
+
 
     # init tfrecord generator
     generator = DataGenerator(
@@ -566,13 +570,34 @@ def main():
         oracle=False if 'oracle' not in config_dict else config_dict['oracle']
     )
 
-    if args.val_data:
-        val_data = load_val_data(args.val_data,
-                                 hmm_factor=0,
-                                 output_size=config_dict["output_size"],
-                                 clamsa=config_dict["clamsa"], softmasking=config_dict["softmasking"],
-                                 oracle=False if 'oracle' not in config_dict else config_dict['oracle']
-                                 )
+    if args.val_species_file:
+        # val_data = load_val_data(
+        #     args.val_data,
+        #     hmm_factor=0,
+        #     output_size=config_dict["output_size"],
+        #     clamsa=config_dict["clamsa"], softmasking=config_dict["softmasking"],
+        #     oracle=False if 'oracle' not in config_dict else config_dict['oracle']
+        # )
+        val_species = read_species(os.path.join(data_path, args.val_species_file))
+        val_files = []
+        for specie in val_species:
+            specie_file_paths = glob.glob(f'{data_path}/{specie}_*.tfrecords')
+            val_files.extend(specie_file_paths)
+        print("val_files: ", val_files)
+        val_data = DataGenerator(
+            file_path=val_files,
+            batch_size=config_dict['batch_size'],
+            shuffle=True,
+            repeat=True,
+            filter=config_dict["filter"],
+            output_size=config_dict["output_size"],
+            hmm_factor=0,
+            seq_weights=config_dict["seq_weights"],
+            softmasking=config_dict["softmasking"],
+            clamsa=False if not "clamsa" in config_dict else config_dict["clamsa"],
+            trans_lstm=config_dict['nuc_trans'],
+            oracle=False if 'oracle' not in config_dict else config_dict['oracle']
+        )
     else:
         val_data = None
 
