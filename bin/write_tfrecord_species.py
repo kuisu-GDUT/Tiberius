@@ -1,4 +1,3 @@
-import pickle
 import sys, json, os, re, sys, csv, argparse
 from typing import Optional
 
@@ -190,29 +189,6 @@ def write_numpy(fasta, ref, out, ref_phase=None, split=100, trans=False, clamsa=
             np.savez(f'{out}_{k}.npz', array1=fasta[indices[k::split], :, :],
                      array2=ref[indices[k::split], :, :], )
 
-def write_pkl(fasta, ref, out, split=1, ref_phase=None, trans=False, clamsa=np.array([])):
-    fasta = fasta.astype(np.int32)
-    ref = ref.astype(np.int32)
-    seq_len = fasta.shape[1]
-
-    print(clamsa.shape, fasta.shape, trans)
-    for idx, (seq, label) in tqdm.tqdm(enumerate(zip(fasta, ref)), desc='Writing pkl files', total=len(fasta)):
-        start_idx = idx * seq_len
-        data = {
-            "seq": seq,
-            "annotation": label,
-            "start_idx": start_idx,
-            "end_idx": start_idx + seq_len,
-        }
-        with open(f'{out}_{start_idx}-{start_idx+seq_len}.pkl', 'wb') as f:
-            pickle.dump(data, f)
-        # if clamsa.any():
-        #     np.savez(f'{out}_{k}.npz', array1=fasta[indices[k::split], :, :],
-        #              array2=ref[indices[k::split], :, :], array3=clamsa[indices[k::split], :, :])
-        # else:
-        #     np.savez(f'{out}_{k}.npz', array1=fasta[indices[k::split], :, :],
-        #              array2=ref[indices[k::split], :, :], )
-
 
 def write_tf_record(fasta, ref, out, ref_phase=None, split=100, trans=False, clamsa=np.array([])):
 
@@ -373,7 +349,7 @@ def write_species_data_hmm(
         print(f"process seq: {seq_name}, len:{seq_len}")
         seq_lens = [seq_len]
         seq_names = [seq_name]
-        out_seq_name = f"{out_name}_{seq_name}_-+"
+        out_seq_name = f"{out_name}_{seq_name}"
 
         fasta.encode_sequences(seq=[seq_name])
         # seqs = [len(s) for s in fasta.sequences]
@@ -412,8 +388,6 @@ def write_species_data_hmm(
                 write_h5(full_f_chunks, full_r_chunks, out_seq_name, split=split)
             elif args.np:
                 write_numpy(full_f_chunks, full_r_chunks, out_seq_name, split=split)
-            elif args.pkl:
-                write_pkl(full_f_chunks, full_r_chunks, out_seq_name, split=split)
             else:
                 write_tf_record(full_f_chunks, full_r_chunks, out_seq_name, split=split)
 
@@ -485,8 +459,6 @@ def parseCmd():
     parser.add_argument('--h5', action='store_true',
                         help='')
     parser.add_argument('--np', action='store_true',
-                        help='')
-    parser.add_argument('--pkl', action='store_true',
                         help='')
 
     return parser.parse_args()

@@ -30,7 +30,6 @@ from tensorflow.keras.optimizers import Adam, SGD
 from tensorflow.keras import backend as K
 import tensorflow.keras as keras
 from tensorflow.keras.callbacks import CSVLogger
-from sklearn.metrics import confusion_matrix
 import models
 from models import (weighted_categorical_crossentropy, custom_cce_f1_loss, BatchLearningRateScheduler,
                     add_hmm_only, add_hmm_layer, lm_model_phase, ValidationCallback,
@@ -554,8 +553,6 @@ def cal_metric(y_true, y_pred):
 
     label = y_true.reshape(-1)
     predict = y_pred.reshape(-1)
-    confusion_matrix = confusion_matrix(label, predict)
-    print(confusion_matrix)
     if binary_classification:
         result = {
             'mcc_score': matthews_corrcoef(label, predict),
