@@ -29,7 +29,7 @@ def parseCmd():
         help='')
     parser.add_argument('--train_species_file',  type=str, default='train_species_filtered.txt',
         help='')
-    parser.add_argument('--learnMSA',  type=str, default='../learnMSA',
+    parser.add_argument('--learnMSA',  type=str, default='./learnMSA',
         help='')
     parser.add_argument('--LRU',  type=str, default='',
         help='Path to the LRU repository')

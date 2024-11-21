@@ -8,9 +8,9 @@
 # ==============================================================
 
 import sys
+from transformers import AutoTokenizer, TFAutoModelForMaskedLM, TFEsmForMaskedLM
 import tensorflow as tf
 import numpy as np
-from transformers import AutoTokenizer, TFAutoModelForMaskedLM, TFEsmForMaskedLM
 
 class DataGenerator:
     """DataGenerator class for reading and processing TFRecord files 
