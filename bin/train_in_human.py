@@ -579,7 +579,7 @@ def main():
         val_species = read_species(f'{args.data}/{args.val_data}')
         test_file_path = []
         for specie in val_species:
-            test_file_path.extend(glob.glob(f'{data_path}/{specie}_*.tfrecords'))
+            test_file_path.extend(glob.glob(f'{data_path}/{specie}_1.tfrecords'))
         val_data = DataGenerator(
             file_path=test_file_path,
             batch_size=config_dict['batch_size'],
