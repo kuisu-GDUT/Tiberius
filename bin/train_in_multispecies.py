@@ -382,7 +382,7 @@ def train_lstm_model(generator, model_save_dir, config, val_data=None, model_loa
             # status = ckpt.restore(model_load + '/variables/variables').expect_partial()
             # print(f"status: {status}")
             model.load_weights(model_load + '/variables/variables')
-            eval_bend_data(model, val_data)
+            eval_val_data(model, val_data)
         if config["loss_weights"]:
             model.compile(
                 loss=cce_loss,
@@ -402,24 +402,24 @@ def train_lstm_model(generator, model_save_dir, config, val_data=None, model_loa
 
         model.fit(
             generator,
-            epochs=5,
+            epochs=config["num_epochs"],
             validation_data=val_data,
             steps_per_epoch=1000,
             callbacks=[epoch_callback, csv_logger]
         )
-        eval_bend_data(model, val_data)
+        if val_data is not None:
+            eval_val_data(model, val_data)
 
 
-def eval_bend_data(model, val_data):
-    y_predicts = []
+def eval_val_data(model, val_data):
     labels = []
+    y_predicts = model.predict(val_data)
     for val_i_data in val_data:
         feature, label = val_i_data
-        y_pred = model.predict_on_batch(feature)
-        y_predicts.append(y_pred)
         labels.append(label)
-    y_predicts = np.concatenate(y_predicts, axis=0)
+    y_predicts = np.asarray(y_predicts)
     labels = np.concatenate(labels, axis=0)
+    print(f"predict shape: {y_predicts.shape}; labels shape: {labels.shape}")
     cal_metric(labels, y_predicts)
 
 
@@ -469,21 +469,6 @@ def cal_metric(y_true, y_pred, ignore_index=9):
     result["confu_matrix"] = str(confu_matrix)
     print(f"eval metric: \n{json.dumps(result)}")
 
-
-def load_bend_data(dest_path=None, batch_size=4, max_length=9999, dataset_name="gene_finding", split="train"):
-    # load bend data
-    bend_data = BendDataset(
-        dest_path=dest_path,
-        split=split,
-        dataset_name=dataset_name,
-        max_length=max_length,
-        read_strand=False,
-    )
-    bend_dataset = pytorch_to_tensorflow_dataset(bend_data)
-    bend_dataset = bend_dataset.batch(batch_size).prefetch(tf.data.AUTOTUNE)
-    return bend_dataset
-
-
 def load_t2t_data(dest_path=None, batch_size=4, max_length=9999, dataset_name="gene_finding", split="train"):
     # load bend data
     t2t_dataset = T2TTiberiusDataset(
@@ -508,7 +493,7 @@ def main():
         batch_size = 28
         batch_save_numb = 100000
     elif w_size == 9999:
-        batch_size = 2
+        batch_size = 16
         batch_save_numb = 1000
     elif w_size == 29997:
         batch_size = 120 * 4
@@ -597,7 +582,12 @@ def main():
 
     val_data = None
     if args.val_data and os.path.exists(args.val_data):
-        val_data = load_t2t_data(dest_path=args.val_data, batch_size=batch_size, split="valid")
+        val_data = load_t2t_data(
+            dest_path=args.val_data,
+            dataset_name="homo_sapiens_tiberius_20K",
+            batch_size=batch_size,
+            split="val"
+        )
 
     if args.hmm:
         train_hmm_model(
