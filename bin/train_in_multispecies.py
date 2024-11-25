@@ -13,8 +13,8 @@ import glob
 from sklearn.metrics import matthews_corrcoef, f1_score, accuracy_score, recall_score, precision_score, confusion_matrix
 
 import parse_args
-from bend_dataset import BendDataset, pytorch_to_tensorflow_dataset
-from t2t_pkl_dataset import T2TTiberiusDataset
+# from bend_dataset import BendDataset, pytorch_to_tensorflow_dataset
+from t2t_pkl_dataset import T2TTiberiusDataset, LABEL_NUM, pytorch_to_tensorflow_dataset
 
 args = parse_args.parseCmd()
 import sys, os, re, json, sys, csv
@@ -470,7 +470,7 @@ def cal_metric(y_true, y_pred, ignore_index=9):
     print(f"eval metric: \n{json.dumps(result)}")
 
 
-def load_bend_data(dest_path=None, batch_size=4, max_length=99999, dataset_name="gene_finding", split="train"):
+def load_bend_data(dest_path=None, batch_size=4, max_length=9999, dataset_name="gene_finding", split="train"):
     # load bend data
     bend_data = BendDataset(
         dest_path=dest_path,
@@ -484,7 +484,7 @@ def load_bend_data(dest_path=None, batch_size=4, max_length=99999, dataset_name=
     return bend_dataset
 
 
-def load_t2t_data(dest_path=None, batch_size=4, max_length=99999, dataset_name="gene_finding", split="train"):
+def load_t2t_data(dest_path=None, batch_size=4, max_length=9999, dataset_name="gene_finding", split="train"):
     # load bend data
     t2t_dataset = T2TTiberiusDataset(
         dest_path=dest_path,
@@ -508,7 +508,7 @@ def main():
         batch_size = 28
         batch_save_numb = 100000
     elif w_size == 9999:
-        batch_size = 16
+        batch_size = 2
         batch_save_numb = 1000
     elif w_size == 29997:
         batch_size = 120 * 4
@@ -523,7 +523,7 @@ def main():
             "loss_weights": False,
             # [1,1,1e3,1e3,1e3],
             # [ 0.24064536,  1.23309401, 89.06682408, 89.68105166, 89.5963385 ],<- computed from class frequencies in train data
-            "loss_weights": [6.37, 1485.62, 1.52, 1485.62, 6.11, 1438.04, 1.52, 1438.04, 1.0, 1.0],
+            # "loss_weights": [6.37, 1485.62, 1.52, 1485.62, 6.11, 1438.04, 1.52, 1438.04, 1.0, 1.0],
             # [1., 1., 1., 1., 1.],
             # [1.0, 5.0, 5.0, 5.0, 15.0, 15.0, 15.0],#[0.33, 1.0, 1.0, 1.0, 3.0, 3.0, 3.0],#
             # binary weights: [0.5033910039153116, 74.22447990141231]
@@ -546,7 +546,7 @@ def main():
             "trainable_lstm": True,  # if False, LSTM is not trainable -> only HMM is trained
             # output_size determines the shape of all outputs and the labels
             # hmm code will try to adapt if output size of loaded lstm is different to this number
-            'output_size': 10,  # default 15
+            'output_size': LABEL_NUM,  # default 15
             'multi_loss': False,  # if both this and use_hmm are True, uses a additional LSTM loss during training
             'l2_lambda': 0.,
             'temperature': 32 * 3,
@@ -588,10 +588,16 @@ def main():
         json.dump(config_dict, f)
 
     # init tfrecord generator
-    dest_path = "/home/share/huadjyin/home/s_liulin4/datasets/Gene_annotation_test/BEND"
-    generator = load_bend_data(dest_path=dest_path, batch_size=batch_size, split="train")
+    generator = load_t2t_data(
+        dest_path=args.data,
+        dataset_name="homo_sapiens_tiberius_20K",
+        split="train",
+        batch_size=batch_size,
+    )
 
-    val_data = load_bend_data(dest_path=dest_path, batch_size=batch_size, split="valid")
+    val_data = None
+    if args.val_data and os.path.exists(args.val_data):
+        val_data = load_t2t_data(dest_path=args.val_data, batch_size=batch_size, split="valid")
 
     if args.hmm:
         train_hmm_model(
