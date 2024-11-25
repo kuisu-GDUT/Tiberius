@@ -14,6 +14,7 @@ from sklearn.metrics import matthews_corrcoef, f1_score, accuracy_score, recall_
 
 import parse_args
 from bend_dataset import BendDataset, pytorch_to_tensorflow_dataset
+from t2t_pkl_dataset import T2TTiberiusDataset
 
 args = parse_args.parseCmd()
 import sys, os, re, json, sys, csv
@@ -21,7 +22,6 @@ import sys, os, re, json, sys, csv
 sys.path.insert(0, args.learnMSA)
 if args.LRU:
     sys.path.insert(0, args.LRU)
-sys.path.append("/home/gabriell/conda/envs/tf_py310/lib/python3.10/site-packages")
 import tensorflow as tf
 import numpy as np
 from tensorflow.keras.callbacks import ModelCheckpoint
@@ -46,120 +46,6 @@ gpus = tf.config.list_physical_devices('GPU')
 strategy = tf.distribute.MirroredStrategy()
 
 batch_save_numb = 1000
-
-
-class MatthewsCorrelationCoefficient(tf.keras.metrics.Metric):
-    """Computes the Matthews Correlation Coefficient.
-
-    The statistic is also known as the phi coefficient.
-    The Matthews correlation coefficient (MCC) is used in
-    machine learning as a measure of the quality of binary
-    and multiclass classifications. It takes into account
-    true and false positives and negatives and is generally
-    regarded as a balanced measure which can be used even
-    if the classes are of very different sizes. The correlation
-    coefficient value of MCC is between -1 and +1. A
-    coefficient of +1 represents a perfect prediction,
-    0 an average random prediction and -1 an inverse
-    prediction. The statistic is also known as
-    the phi coefficient.
-
-    MCC = (TP * TN - FP * FN) /
-          ((TP + FP) * (TP + FN) * (TN + FP) * (TN + FN))^(1/2)
-
-    Args:
-        num_classes : Number of unique classes in the dataset.
-        name: (Optional) String name of the metric instance.
-        dtype: (Optional) Data type of the metric result.
-
-    Usage:
-
-    >>> y_true = np.array([[0.0, 1.0], [0.0, 1.0], [0.0, 1.0], [1.0, 0.0]], dtype=np.float32)
-    >>> y_pred = np.array([[0.0, 1.0], [1.0, 0.0], [0.0, 1.0], [0.0, 1.0]], dtype=np.float32)
-    >>> metric = tfa.metrics.MatthewsCorrelationCoefficient(num_classes=2)
-    >>> metric.update_state(y_true, y_pred)
-    >>> result = metric.result()
-    >>> result.numpy()
-    -0.33333334
-    """
-
-    def __init__(
-            self,
-            num_classes,
-            name: str = "MatthewsCorrelationCoefficient",
-            dtype=None,
-            **kwargs,
-    ):
-        """Creates a Matthews Correlation Coefficient instance."""
-        super().__init__(name=name, dtype=dtype)
-        self.num_classes = num_classes
-        self.conf_mtx = self.add_weight(
-            "conf_mtx",
-            shape=(self.num_classes, self.num_classes),
-            initializer=tf.keras.initializers.zeros,
-            dtype=self.dtype,
-        )
-
-    # TODO: sample_weights
-    def update_state(self, y_true, y_pred, sample_weight=None):
-        print(f"y_true shape: {y_true.shape}; y_pred shape: {y_pred.shape}")
-        y_true = tf.cast(y_true, dtype=self.dtype)
-        y_pred = tf.cast(y_pred, dtype=self.dtype)
-
-        new_conf_mtx = tf.math.confusion_matrix(
-            labels=tf.argmax(y_true, -1),
-            predictions=tf.argmax(y_pred, -1),
-            num_classes=self.num_classes,
-            weights=sample_weight,
-            dtype=self.dtype,
-        )
-
-        self.conf_mtx.assign_add(new_conf_mtx)
-
-    def result(self):
-
-        true_sum = tf.reduce_sum(self.conf_mtx, axis=1)
-        pred_sum = tf.reduce_sum(self.conf_mtx, axis=0)
-        num_correct = tf.linalg.trace(self.conf_mtx)
-        num_samples = tf.reduce_sum(pred_sum)
-
-        # covariance true-pred
-        cov_ytyp = num_correct * num_samples - tf.tensordot(true_sum, pred_sum, axes=1)
-        # covariance pred-pred
-        cov_ypyp = num_samples ** 2 - tf.tensordot(pred_sum, pred_sum, axes=1)
-        # covariance true-true
-        cov_ytyt = num_samples ** 2 - tf.tensordot(true_sum, true_sum, axes=1)
-
-        mcc = cov_ytyp / tf.math.sqrt(cov_ytyt * cov_ypyp)
-
-        if tf.math.is_nan(mcc):
-            mcc = tf.constant(0, dtype=self.dtype)
-
-        return mcc
-
-    def get_config(self):
-        """Returns the serializable config of the metric."""
-
-        config = {
-            "num_classes": self.num_classes,
-        }
-        base_config = super().get_config()
-        return {**base_config, **config}
-
-    def reset_state(self):
-        """Resets all of the metric state variables."""
-
-        for v in self.variables:
-            K.set_value(
-                v,
-                np.zeros((self.num_classes, self.num_classes), v.dtype.as_numpy_dtype),
-            )
-
-    def reset_states(self):
-        # Backwards compatibility alias of `reset_state`. New classes should
-        # only implement `reset_state`.
-        # Required in Tensorflow < 2.5.0
-        return self.reset_state()
 
 
 def train_hmm_model(generator, model_save_dir, config, val_data=None,
@@ -577,8 +463,8 @@ def cal_metric(y_true, y_pred, ignore_index=9):
             'precision_score': precision_score(label, predict, average='macro'),
         }
     confu_matrix = confusion_matrix(label, predict)
-    if confu_matrix.shape[0] > 9:
-        confu_matrix = confu_matrix[:9, :9]
+    if confu_matrix.shape[0] > 20:
+        confu_matrix = confu_matrix[:20, :20]
         print("Confusion matrix is too large, only show the first 9x9 part")
     result["confu_matrix"] = str(confu_matrix)
     print(f"eval metric: \n{json.dumps(result)}")
@@ -594,6 +480,20 @@ def load_bend_data(dest_path=None, batch_size=4, max_length=99999, dataset_name=
         read_strand=False,
     )
     bend_dataset = pytorch_to_tensorflow_dataset(bend_data)
+    bend_dataset = bend_dataset.batch(batch_size).prefetch(tf.data.AUTOTUNE)
+    return bend_dataset
+
+
+def load_t2t_data(dest_path=None, batch_size=4, max_length=99999, dataset_name="gene_finding", split="train"):
+    # load bend data
+    t2t_dataset = T2TTiberiusDataset(
+        dest_path=dest_path,
+        split=split,
+        dataset_name=dataset_name,
+        max_length=max_length,
+        read_strand=False,
+    )
+    bend_dataset = pytorch_to_tensorflow_dataset(t2t_dataset)
     bend_dataset = bend_dataset.batch(batch_size).prefetch(tf.data.AUTOTUNE)
     return bend_dataset
 
@@ -623,7 +523,8 @@ def main():
             "loss_weights": False,
             # [1,1,1e3,1e3,1e3],
             # [ 0.24064536,  1.23309401, 89.06682408, 89.68105166, 89.5963385 ],<- computed from class frequencies in train data
-            "loss_weights": [6.37, 1485.62, 1.52, 1485.62, 6.11, 1438.04, 1.52, 1438.04, 1.0,1.0],  # [1., 1., 1., 1., 1.],
+            "loss_weights": [6.37, 1485.62, 1.52, 1485.62, 6.11, 1438.04, 1.52, 1438.04, 1.0, 1.0],
+            # [1., 1., 1., 1., 1.],
             # [1.0, 5.0, 5.0, 5.0, 15.0, 15.0, 15.0],#[0.33, 1.0, 1.0, 1.0, 3.0, 3.0, 3.0],#
             # binary weights: [0.5033910039153116, 74.22447990141231]
             "stride": 0,  # if > 0 reduces size of sequence CNN stride
