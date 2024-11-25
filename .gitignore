@@ -132,3 +132,4 @@ dmypy.json
 .pyre/
 /weights/
 /learnMSA_abadon/
+/learnMSA_tmp/
