@@ -168,10 +168,15 @@ def train_hmm_model(generator, model_save_dir, config, val_data=None,
         b_lr_sched = BatchLearningRateScheduler(peak=config["lr"], warmup=config["warmup"],
                                                 min_lr=config["min_lr"])
         model.save(model_save_dir + "/untrained.keras")
-        model.fit(generator, epochs=500, validation_data=val_data,
-                  steps_per_epoch=1000,
-                  validation_batch_size=config['batch_size'],
-                  callbacks=[epoch_callback, csv_logger])
+        model.fit(
+            generator,
+            epochs=config["num_epochs"],
+            validation_data=val_data,
+            steps_per_epoch=1000,
+            validation_batch_size=config['batch_size'],
+            callbacks=[epoch_callback, csv_logger]
+        )
+        return model
 
 
 def read_species(file_name):
@@ -268,6 +273,7 @@ def train_clamsa(generator, model_save_dir, config, val_data=None, model_load=No
             epochs=500,
             steps_per_epoch=1000,
             callbacks=[epoch_callback, csv_logger])
+        return model
 
 
 def train_add_transformer2lstm(generator, model_save_dir, config, val_data=None, model_load=None):
@@ -325,6 +331,7 @@ def train_add_transformer2lstm(generator, model_save_dir, config, val_data=None,
         model.fit(generator, epochs=500,
                   steps_per_epoch=1000,
                   callbacks=[epoch_callback, csv_logger])
+    return model
 
 
 def train_lstm_model(generator, model_save_dir, config, val_data=None, model_load=None):
@@ -407,8 +414,7 @@ def train_lstm_model(generator, model_save_dir, config, val_data=None, model_loa
             steps_per_epoch=1000,
             callbacks=[epoch_callback, csv_logger]
         )
-        if val_data is not None:
-            eval_val_data(model, val_data)
+    return model
 
 
 def eval_val_data(model, val_data):
@@ -468,6 +474,7 @@ def cal_metric(y_true, y_pred, ignore_index=9):
         print("Confusion matrix is too large, only show the first 9x9 part")
     result["confu_matrix"] = str(confu_matrix)
     print(f"eval metric: \n{json.dumps(result)}")
+
 
 def load_t2t_data(dest_path=None, batch_size=4, max_length=9999, dataset_name="gene_finding", split="train"):
     # load bend data
@@ -590,7 +597,7 @@ def main():
         )
 
     if args.hmm:
-        train_hmm_model(
+        model = train_hmm_model(
             generator=generator, val_data=val_data,
             model_save_dir=config_dict["model_save_dir"], config=config_dict,
             model_load_lstm=config_dict["model_load_lstm"],
@@ -600,24 +607,29 @@ def main():
             constant_hmm=config_dict["constant_hmm"]
         )
     elif args.clamsa:
-        train_clamsa(
+        model = train_clamsa(
             generator=generator,
             model_save_dir=config_dict["model_save_dir"],
             config=config_dict,
             model_load=config_dict["model_load"],
             model_load_lstm=config_dict["model_load_lstm"])
     elif args.nuc_trans:
-        train_add_transformer2lstm(generator=generator,
-                                   model_save_dir=config_dict["model_save_dir"],
-                                   config=config_dict, model_load=config_dict["model_load"])
+        model = train_add_transformer2lstm(
+            generator=generator,
+            model_save_dir=config_dict["model_save_dir"],
+            config=config_dict,
+            model_load=config_dict["model_load"])
     else:
-        train_lstm_model(
+        model = train_lstm_model(
             generator=generator,
             val_data=val_data,
             model_save_dir=config_dict["model_save_dir"],
             config=config_dict,
             model_load=config_dict["model_load"]
         )
+
+    if val_data is not None:
+        eval_val_data(model, val_data)
 
 
 if __name__ == '__main__':
