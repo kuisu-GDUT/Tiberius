@@ -3,6 +3,7 @@
 #
 # Class handling GTF information to generate trainings examples
 # ==============================================================
+import logging
 
 import numpy as np
 import sys
@@ -93,10 +94,8 @@ class GeneStructure:
         self.one_hot = {}
 
         numb_labels = 7
-        print("transition: ", transition)
         if transition:
-            transition = False
-            numb_labels = 7
+            numb_labels = 15
 
         # Initialize a numpy array to store the one-hot encoded positions
         for strand in ['+', '-']:

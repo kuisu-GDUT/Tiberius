@@ -212,7 +212,7 @@ def write_tf_record(fasta, ref, out, ref_phase=None, split=100, trans=False, cla
 
     indices = np.arange(fasta.shape[0])
     np.random.shuffle(indices)
-    print(clamsa.shape, fasta.shape, trans)
+    print(f"clamsa shape: {clamsa.shape}' fasta  shape: {fasta.shape}; ref shape: {ref.shape}; trans: {trans}")
     if ref_phase:
         ref_phase = ref_phase.astype(np.int32)
 
@@ -342,7 +342,7 @@ def write_species_data_hmm(
         species='',
         seq_len=500004,
         overlap_size=0,
-        transition=False,
+        transition=True,
         out_name='',
         split=10,
         args: Optional[dict] = None
@@ -350,7 +350,7 @@ def write_species_data_hmm(
     if not genome_path:
         genome_path = f'/home/gabriell/deepl_data/genomes/{species}.fa.combined.masked'
     if not annot_path:
-        annot_path = f'/home/gabriell//deepl_data/annot_longest_fixed/{species}.gtf'
+        annot_path = f'/home/gabriell/deepl_data/annot_longest_fixed/{species}.gtf'
 
     fasta = GenomeSequences(
         fasta_file=genome_path,
@@ -421,7 +421,7 @@ def main():
         species=args.species,
         seq_len=args.wsize,
         overlap_size=0,
-        transition=False,
+        transition=args.transition,
         out_name=args.out,
         args=args
     )  # NOTE: defalut transition=True
@@ -468,8 +468,8 @@ def parseCmd():
                         help='Prefix of output files')
     parser.add_argument('--wsize', type=int,
                         help='', required=True)
-    # parser.add_argument('--no_transition', action='store_true',
-    #     help='')
+    parser.add_argument('--transition', action='store_true',
+        help='')
     parser.add_argument('--transformer', action='store_true',
                         help='')
     parser.add_argument('--clamsa', type=str, default='',
