@@ -2,6 +2,8 @@ import sys, json, os, re, sys, csv, argparse
 script_dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(f"{script_dir}/../bin/")
 import subprocess as sp
+import transformers
+import tensorflow as tf
 import numpy as np
 import os
 import warnings
@@ -23,9 +25,8 @@ def main():
     sys.path.append(args.LRU)
     if args.gpu:
         os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
-    import tensorflow as tf
     from eval_model_class import PredictionGTF
-    from transformers import TFEsmForMaskedLM
+    # from transformers import TFEsmForMaskedLM
     from models import make_weighted_cce_loss
     if args.bigwig:
         import pyBigWig
