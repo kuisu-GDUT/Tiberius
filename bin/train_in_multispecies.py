@@ -11,9 +11,8 @@
 import glob
 import logging
 
-from sklearn.metrics import matthews_corrcoef, f1_score, accuracy_score, recall_score, precision_score, confusion_matrix
-
 import parse_args
+from sklearn.metrics import matthews_corrcoef, f1_score, accuracy_score, recall_score, precision_score, confusion_matrix
 # from bend_dataset import BendDataset, pytorch_to_tensorflow_dataset
 from t2t_pkl_dataset import T2TTiberiusDataset, LABEL_NUM, pytorch_to_tensorflow_dataset
 

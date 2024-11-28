@@ -9,8 +9,10 @@
 # tensorflow_probability 0.18.0
 # ==============================================================
 import glob
+import logging
 
 import parse_args
+from sklearn.metrics import matthews_corrcoef, f1_score, accuracy_score, recall_score, precision_score, confusion_matrix
 
 args = parse_args.parseCmd()
 import sys, os, re, json, sys, csv
@@ -168,6 +170,7 @@ def train_hmm_model(generator, model_save_dir, config, val_data=None,
                   steps_per_epoch=1000,
                   validation_batch_size=config['batch_size'],
                   callbacks=[epoch_callback, csv_logger])
+    return model
 
 
 def read_species(file_name):
@@ -262,6 +265,7 @@ def train_clamsa(generator, model_save_dir, config, val_data=None, model_load=No
         model.fit(generator, epochs=500,
                   steps_per_epoch=1000,
                   callbacks=[epoch_callback, csv_logger])
+    return model
 
 
 def train_add_transformer2lstm(generator, model_save_dir, config, val_data=None, model_load=None):
@@ -319,7 +323,7 @@ def train_add_transformer2lstm(generator, model_save_dir, config, val_data=None,
         model.fit(generator, epochs=500,
                   steps_per_epoch=1000,
                   callbacks=[epoch_callback, csv_logger])
-
+    return model
 
 def train_lstm_model(generator, model_save_dir, config, val_data=None, model_load=None):
     """Trains the LSTM model using data provided by a generator, while saving the 
@@ -384,7 +388,7 @@ def train_lstm_model(generator, model_save_dir, config, val_data=None, model_loa
         model.fit(generator, epochs=2000, validation_data=val_data,
                   steps_per_epoch=1000,
                   callbacks=[epoch_callback, csv_logger])
-
+    return model
 
 def load_val_data(file, hmm_factor=1, output_size=7, clamsa=False, softmasking=True, oracle=False):
     """
@@ -447,6 +451,65 @@ def load_val_data(file, hmm_factor=1, output_size=7, clamsa=False, softmasking=T
         return [[(x, c) for x, c in zip(x_val, clamsa_track)], y_val]
     return [[x_val, y_val], y_val.astype(np.float32)] if oracle else [x_val, y_val]
 
+
+def eval_val_data(model, val_data):
+    labels = []
+    y_predicts = model.predict(val_data)
+    for val_i_data in val_data:
+        feature, label = val_i_data
+        labels.append(label)
+    y_predicts = np.asarray(y_predicts)
+    labels = np.concatenate(labels, axis=0)
+    print(f"predict shape: {y_predicts.shape}; labels shape: {labels.shape}")
+    cal_metric(labels, y_predicts)
+
+
+def cal_metric(y_true, y_pred, ignore_index=9):
+    """Calculates the Matthews correlation coefficient for binary classification.
+
+    Parameters:
+        - y_true (array): True binary labels.
+        - y_pred (array): Predicted binary labels.
+
+    Returns:
+        - float: Matthews
+    """
+    binary_classification = y_pred.shape[-1] == 2
+    y_true = np.argmax(y_true, axis=-1)
+    y_pred = np.argmax(y_pred, axis=-1)
+
+    label = y_true.reshape(-1)
+    predict = y_pred.reshape(-1)
+
+    mask = label != ignore_index
+    label = label[mask]
+    predict = predict[mask]
+    if binary_classification:
+        result = {
+            'mcc_score': matthews_corrcoef(label, predict),
+            'f1_score': f1_score(label, predict),
+            'accuracy_score': accuracy_score(label, predict),
+            'recall_score': recall_score(label, predict),
+            'precision_score': precision_score(label, predict),
+            # 'roc_auc_score': roc_auc_score(label, predict),
+        }
+    else:
+        # fix sum up to 1.0 over classes
+        # pred_prob = np.exp(pred_prob) / np.sum(np.exp(pred_prob), axis=1, keepdims=True)
+        result = {
+            'mcc_score': matthews_corrcoef(label, predict),
+            'f1_score': f1_score(label, predict, average='macro'),
+            'accuracy_score': accuracy_score(label, predict),
+            'recall_score': recall_score(label, predict, average='macro'),
+            'precision_score': precision_score(label, predict, average='macro'),
+        }
+    print(f"label: {label}, max label: {label.max()}")
+    confu_matrix = confusion_matrix(label, predict)
+    if confu_matrix.shape[-1] > 20:
+        confu_matrix = confu_matrix[:20, :20]
+        print("Confusion matrix is too large, only show the first 9x9 part")
+    result["confu_matrix"] = str(confu_matrix)
+    print(f"eval metric: \n{json.dumps(result)}")
 
 file_paths = []
 
@@ -554,6 +617,7 @@ def main():
         train_file_path.extend(glob.glob(f'{data_path}/{specie}_*.tfrecords'))
 
     # init tfrecord generator
+    logging.info(f'Found {len(train_file_path)} training files')
     generator = DataGenerator(
         file_path=train_file_path,
         batch_size=config_dict['batch_size'],
@@ -579,7 +643,9 @@ def main():
         val_species = read_species(f'{args.data}/{args.val_data}')
         test_file_path = []
         for specie in val_species:
-            test_file_path.extend(glob.glob(f'{data_path}/{specie}_1.tfrecords'))
+            test_file_path.extend(glob.glob(f'{data_path}/{specie}_*.tfrecords'))
+        logging.info(f'Found {len(test_file_path)} val files')
+
         val_data = DataGenerator(
             file_path=test_file_path,
             batch_size=config_dict['batch_size'],
@@ -598,7 +664,7 @@ def main():
         val_data = None
 
     if args.hmm:
-        train_hmm_model(
+        model = train_hmm_model(
             generator=generator,
             val_data=val_data,
             model_save_dir=config_dict["model_save_dir"], config=config_dict,
@@ -609,25 +675,28 @@ def main():
             constant_hmm=config_dict["constant_hmm"]
         )
     elif args.clamsa:
-        train_clamsa(
+        model = train_clamsa(
             generator=generator,
             model_save_dir=config_dict["model_save_dir"],
             config=config_dict,
             model_load=config_dict["model_load"],
             model_load_lstm=config_dict["model_load_lstm"])
     elif args.nuc_trans:
-        train_add_transformer2lstm(
+        model = train_add_transformer2lstm(
             generator=generator,
             model_save_dir=config_dict["model_save_dir"],
             config=config_dict, model_load=config_dict["model_load"])
     else:
-        train_lstm_model(
+        model = train_lstm_model(
             generator=generator,
             val_data=val_data,
             model_save_dir=config_dict["model_save_dir"],
             config=config_dict,
             model_load=config_dict["model_load"]
         )
+
+    if val_data is not None:
+        eval_val_data(model, val_data)
 
 
 if __name__ == '__main__':
