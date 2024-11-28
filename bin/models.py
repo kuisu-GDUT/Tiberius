@@ -490,7 +490,11 @@ def add_hmm_layer(model, gene_pred_layer=None, dense_size=128, pool_size=9,
         y_hmm = gene_pred_layer(factor_x, nucleotides=factor_nuc, embeddings=factor_emb, end_hints=input_hints_hmm)
         y_hmm = tf.reshape(y_hmm, (-1, seq_len, 14*num_hmm+1))
     else:
-        y_hmm = gene_pred_layer(x, nucleotides=nuc, embeddings=emb) # x: lstm model output, nuc: ACGTN one-hot
+        y_hmm = gene_pred_layer(
+            x,
+            nucleotides=nuc,
+            embeddings=emb
+        ) # x: lstm model output, nuc: ACGTN one-hot
 
     if output_size < 15:
         y = Activation('softmax')(y_hmm)

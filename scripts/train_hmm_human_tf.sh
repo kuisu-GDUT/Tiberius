@@ -9,4 +9,5 @@ python bin/train_in_human.py \
   --val_data val_species_filtered.txt \
   --out ./outputs/Human_15class_tfrecord \
   --learnMSA . \
-  --load weights/tiberius_weights
+  --load weights/tiberius_weights \
+  --hmm

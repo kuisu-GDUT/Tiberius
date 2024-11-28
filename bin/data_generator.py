@@ -243,8 +243,12 @@ class DataGenerator:
                     y_new[:,:,0] = y_batch[:,:,0]
                     y_new[:,:,1] = np.sum(y_batch[:,:,1:4], axis=-1)            
                     y_new[:,:,2] = np.sum(y_batch[:,:,4:], axis=-1)
+                elif self.output_size == 15:
+                    # reduce intron and exon labels
+                    y_new = np.zeros((y_batch.shape[0], y_batch.shape[1], self.output_size), np.float32)
+                    y_new[:,:,:y_batch.shape[-1]] = y_batch
                 else:
-                    y_new = y_batch
+                    y_new = y_batch.astype(np.float32)
                 y_batch = y_new
             elif y_batch.shape[-1] == 15:
                 if self.output_size == 3:
