@@ -6,7 +6,7 @@
 # 
 # Transformers 4.31.0
 # ==============================================================
-
+import logging
 import sys
 from transformers import AutoTokenizer, TFAutoModelForMaskedLM, TFEsmForMaskedLM
 import tensorflow as tf
@@ -35,6 +35,7 @@ class DataGenerator:
                  repeat=True,                  
                  filter=False,
                  output_size=5,
+                 max_nums:int=-1,
                 hmm_factor=None,
                 trans=False, trans_lstm=False, 
                  seq_weights=0, softmasking=True,
@@ -53,6 +54,7 @@ class DataGenerator:
         self.softmasking=softmasking
         self.clamsa = clamsa
         self.oracle = oracle
+        self.max_nums = max_nums
         
         self.dataset = self._read_tfrecord_file(repeat=repeat)
         self.iterator = iter(self.dataset)
@@ -142,7 +144,9 @@ class DataGenerator:
 
         if repeat:
             dataset = dataset.repeat()
-
+        if self.max_nums > 0:
+            logging.info(f"Taking {self.max_nums} samples from the dataset")
+            dataset = dataset.take(self.max_nums)  # TODO temporary
         dataset = dataset.batch(self.batch_size, drop_remainder=True)
         dataset = dataset.prefetch(buffer_size=tf.data.AUTOTUNE)
 
@@ -238,7 +242,9 @@ class DataGenerator:
                     y_new = np.zeros((y_batch.shape[0], y_batch.shape[1], 3), np.float32)
                     y_new[:,:,0] = y_batch[:,:,0]
                     y_new[:,:,1] = np.sum(y_batch[:,:,1:4], axis=-1)            
-                    y_new[:,:,2] = np.sum(y_batch[:,:,4:], axis=-1)  
+                    y_new[:,:,2] = np.sum(y_batch[:,:,4:], axis=-1)
+                else:
+                    y_new = y_batch
                 y_batch = y_new
             elif y_batch.shape[-1] == 15:
                 if self.output_size == 3:
@@ -272,6 +278,8 @@ class DataGenerator:
                     y_new[:,:,1] = np.sum(y_batch[:,:,[4, 7, 10, 12]], axis=-1)   
                     y_new[:,:,2] = np.sum(y_batch[:,:,[5, 8, 13]], axis=-1)
                     y_new[:,:,3] = np.sum(y_batch[:,:,[6, 9, 11, 14]], axis=-1)
+                else:
+                    y_new = y_batch
                 y_batch = y_new
         if self.trans_lstm:
             # prepare tokens for transformer lstm as additional input for the model

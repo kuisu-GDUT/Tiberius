@@ -10,6 +10,9 @@
 # ==============================================================
 import glob
 import logging
+import random
+
+import tqdm
 
 import parse_args
 from sklearn.metrics import matthews_corrcoef, f1_score, accuracy_score, recall_score, precision_score, confusion_matrix
@@ -166,10 +169,16 @@ def train_hmm_model(generator, model_save_dir, config, val_data=None,
         b_lr_sched = BatchLearningRateScheduler(peak=config["lr"], warmup=config["warmup"],
                                                 min_lr=config["min_lr"])
         model.save(model_save_dir + "/untrained.keras")
-        model.fit(generator, epochs=500, validation_data=val_data,
-                  steps_per_epoch=1000,
-                  validation_batch_size=config['batch_size'],
-                  callbacks=[epoch_callback, csv_logger])
+        logging.info("start training")
+        model.fit(
+            generator,
+            epochs=config["num_epochs"],
+            validation_data=val_data,
+            steps_per_epoch=10,
+            validation_batch_size=config['batch_size'],
+            callbacks=[epoch_callback, csv_logger])
+        model.save(model_save_dir + "/last_model.keras")
+        logging.info("training done")
     return model
 
 
@@ -262,9 +271,12 @@ def train_clamsa(generator, model_save_dir, config, val_data=None, model_load=No
                           metrics=['accuracy'])
         model.summary()
 
-        model.fit(generator, epochs=500,
-                  steps_per_epoch=1000,
-                  callbacks=[epoch_callback, csv_logger])
+        model.fit(
+            generator,
+            epochs=config["num_epochs"],
+            steps_per_epoch=1000,
+            callbacks=[epoch_callback, csv_logger])
+        model.save(model_save_dir + "/last_model.keras")
     return model
 
 
@@ -320,10 +332,14 @@ def train_add_transformer2lstm(generator, model_save_dir, config, val_data=None,
                           metrics=['accuracy'])
         model.summary()
 
-        model.fit(generator, epochs=500,
-                  steps_per_epoch=1000,
-                  callbacks=[epoch_callback, csv_logger])
+        model.fit(
+            generator,
+            epochs=config["num_epochs"],
+            steps_per_epoch=1000,
+            callbacks=[epoch_callback, csv_logger])
+        model.save(model_save_dir + "/last_model.keras")
     return model
+
 
 def train_lstm_model(generator, model_save_dir, config, val_data=None, model_load=None):
     """Trains the LSTM model using data provided by a generator, while saving the 
@@ -374,6 +390,7 @@ def train_lstm_model(generator, model_save_dir, config, val_data=None, model_loa
         relevant_args = {key: config[key] for key in relevant_keys if key in config}
         model = lstm_model(**relevant_args)
         if model_load:
+            logging.info(f"load weight from: {model_load}")
             model.load_weights(model_load + '/variables/variables')
         if config["loss_weights"]:
             model.compile(loss=cce_loss, optimizer=optimizer,
@@ -384,11 +401,17 @@ def train_lstm_model(generator, model_save_dir, config, val_data=None, model_loa
             model.compile(loss=cce_loss, optimizer=optimizer,
                           metrics=['accuracy'])
         model.summary()
-
-        model.fit(generator, epochs=2000, validation_data=val_data,
-                  steps_per_epoch=1000,
-                  callbacks=[epoch_callback, csv_logger])
+        logging.info("start training")
+        model.fit(
+            generator,
+            epochs=config["num_epochs"],
+            validation_data=val_data,
+            steps_per_epoch=1000,
+            callbacks=[epoch_callback, csv_logger])
+        model.save(model_save_dir + "/last_model.keras")
+        logging.info("training done")
     return model
+
 
 def load_val_data(file, hmm_factor=1, output_size=7, clamsa=False, softmasking=True, oracle=False):
     """
@@ -453,11 +476,15 @@ def load_val_data(file, hmm_factor=1, output_size=7, clamsa=False, softmasking=T
 
 
 def eval_val_data(model, val_data):
+    logging.info("Evaluating model on validation data")
     labels = []
-    y_predicts = model.predict(val_data)
-    for val_i_data in val_data:
+    val_tmp_data = iter(val_data.dataset)
+    for val_i_data in tqdm.tqdm(val_tmp_data, desc="evaluating"):
         feature, label = val_i_data
+        logging.info(f"label shape: {label.shape}")
         labels.append(label)
+    val_tmp_data = iter(val_data.dataset)
+    y_predicts = model.predict(val_tmp_data)
     y_predicts = np.asarray(y_predicts)
     labels = np.concatenate(labels, axis=0)
     print(f"predict shape: {y_predicts.shape}; labels shape: {labels.shape}")
@@ -511,6 +538,7 @@ def cal_metric(y_true, y_pred, ignore_index=9):
     result["confu_matrix"] = str(confu_matrix)
     print(f"eval metric: \n{json.dumps(result)}")
 
+
 file_paths = []
 
 
@@ -525,7 +553,7 @@ def main():
         batch_size = 8
         batch_save_numb = 100000
     elif w_size == 9999:
-        batch_size = 2
+        batch_size = 16
         batch_save_numb = 1000
     elif w_size == 29997:
         batch_size = 120 * 4
@@ -535,7 +563,7 @@ def main():
             config_dict = json.load(f)
     else:
         config_dict = {
-            "num_epochs": 2000,
+            "num_epochs": 1,
             'use_hmm': args.hmm,
             "loss_weights": False,
             # [1,1,1e3,1e3,1e3],
@@ -562,7 +590,7 @@ def main():
             "trainable_lstm": True,  # if False, LSTM is not trainable -> only HMM is trained
             # output_size determines the shape of all outputs and the labels
             # hmm code will try to adapt if output size of loaded lstm is different to this number
-            'output_size': 5,  # default 15
+            'output_size': 7,  # default 15
             'multi_loss': False,  # if both this and use_hmm are True, uses a additional LSTM loss during training
             'l2_lambda': 0.,
             'temperature': 32 * 3,
@@ -645,12 +673,17 @@ def main():
         for specie in val_species:
             test_file_path.extend(glob.glob(f'{data_path}/{specie}_*.tfrecords'))
         logging.info(f'Found {len(test_file_path)} val files')
+        max_test_file_num = 2
+        if len(test_file_path) > max_test_file_num:
+            test_file_path = random.sample(test_file_path, max_test_file_num)
+            logging.info(f'Using only 3 val files by random selected: {test_file_path}')
 
         val_data = DataGenerator(
             file_path=test_file_path,
             batch_size=config_dict['batch_size'],
-            shuffle=True,
+            shuffle=False,
             repeat=True,
+            max_nums=1000,
             filter=config_dict["filter"],
             output_size=config_dict["output_size"],
             hmm_factor=0,
@@ -694,10 +727,11 @@ def main():
             config=config_dict,
             model_load=config_dict["model_load"]
         )
-
+    logging.info("Training finished")
     if val_data is not None:
         eval_val_data(model, val_data)
 
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO)
     main()
