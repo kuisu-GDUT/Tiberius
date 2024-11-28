@@ -481,7 +481,6 @@ def eval_val_data(model, val_data):
     val_tmp_data = iter(val_data.dataset)
     for val_i_data in tqdm.tqdm(val_tmp_data, desc="evaluating"):
         feature, label = val_i_data
-        logging.info(f"label shape: {label.shape}")
         labels.append(label)
     val_tmp_data = iter(val_data.dataset)
     y_predicts = model.predict(val_tmp_data)
@@ -563,7 +562,7 @@ def main():
             config_dict = json.load(f)
     else:
         config_dict = {
-            "num_epochs": 1,
+            "num_epochs": 100,
             'use_hmm': args.hmm,
             "loss_weights": False,
             # [1,1,1e3,1e3,1e3],
@@ -683,7 +682,7 @@ def main():
             batch_size=config_dict['batch_size'],
             shuffle=False,
             repeat=True,
-            max_nums=1000,
+            max_nums=10000,
             filter=config_dict["filter"],
             output_size=config_dict["output_size"],
             hmm_factor=0,
@@ -699,7 +698,7 @@ def main():
     if args.hmm:
         model = train_hmm_model(
             generator=generator,
-            val_data=val_data,
+            val_data=None,
             model_save_dir=config_dict["model_save_dir"], config=config_dict,
             model_load_lstm=config_dict["model_load_lstm"],
             model_load_hmm=config_dict["model_load_hmm"],
@@ -722,7 +721,7 @@ def main():
     else:
         model = train_lstm_model(
             generator=generator,
-            val_data=val_data,
+            val_data=None,
             model_save_dir=config_dict["model_save_dir"],
             config=config_dict,
             model_load=config_dict["model_load"]

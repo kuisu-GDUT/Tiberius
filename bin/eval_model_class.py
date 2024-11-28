@@ -336,8 +336,8 @@ class PredictionGTF:
         fasta = GenomeSequences(fasta_file=genome_path,
             chunksize=chunk_len, 
             overlap=0)
-        
-        fasta.encode_sequences() 
+        fasta.sequence_names = [fasta.sequence_names[1]]
+        fasta.encode_sequences() #TODO tempeary
         f_chunk, coords = fasta.get_flat_chunks(strand=strand, coords=chunk_coords, pad=pad)
         seq_len = [len(s) for s in fasta.sequences]
         self.fasta_seq_lens = dict(zip(fasta.sequence_names, seq_len))

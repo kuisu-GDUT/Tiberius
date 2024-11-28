@@ -1,3 +1,5 @@
+import logging
+
 import numpy as np
 
 
@@ -183,6 +185,7 @@ class GenomeSequences:
 
         if not sequence_name:
             sequence_name = self.sequence_names
+        logging.info(f"Getting chunks for {sequence_name}")
         sequences_i = [self.one_hot_encoded[i] for i in sequence_name]
 
         chunks_one_hot = []
