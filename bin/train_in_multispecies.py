@@ -9,6 +9,7 @@
 # tensorflow_probability 0.18.0
 # ==============================================================
 import glob
+import logging
 
 from sklearn.metrics import matthews_corrcoef, f1_score, accuracy_score, recall_score, precision_score, confusion_matrix
 
@@ -468,8 +469,9 @@ def cal_metric(y_true, y_pred, ignore_index=9):
             'recall_score': recall_score(label, predict, average='macro'),
             'precision_score': precision_score(label, predict, average='macro'),
         }
+    print(f"label: {label}, max label: {label.max()}")
     confu_matrix = confusion_matrix(label, predict)
-    if confu_matrix.shape[0] > 20:
+    if confu_matrix.shape[-1] > 20:
         confu_matrix = confu_matrix[:20, :20]
         print("Confusion matrix is too large, only show the first 9x9 part")
     result["confu_matrix"] = str(confu_matrix)
@@ -597,6 +599,7 @@ def main():
         )
 
     if args.hmm:
+        logging.info("start train hmm model")
         model = train_hmm_model(
             generator=generator, val_data=val_data,
             model_save_dir=config_dict["model_save_dir"], config=config_dict,
@@ -607,6 +610,7 @@ def main():
             constant_hmm=config_dict["constant_hmm"]
         )
     elif args.clamsa:
+        logging.info("start train_clamsa")
         model = train_clamsa(
             generator=generator,
             model_save_dir=config_dict["model_save_dir"],
@@ -614,12 +618,14 @@ def main():
             model_load=config_dict["model_load"],
             model_load_lstm=config_dict["model_load_lstm"])
     elif args.nuc_trans:
+        logging.info("start train_add_transformer2lstm")
         model = train_add_transformer2lstm(
             generator=generator,
             model_save_dir=config_dict["model_save_dir"],
             config=config_dict,
             model_load=config_dict["model_load"])
     else:
+        logging.info("start train_lstm_model")
         model = train_lstm_model(
             generator=generator,
             val_data=val_data,
@@ -633,4 +639,5 @@ def main():
 
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO)
     main()

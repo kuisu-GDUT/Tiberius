@@ -6,4 +6,5 @@ python bin/train_in_multispecies.py \
   --data /data/sukui_data/01_data/01_genomics_data/gene_structure \
   --out ./output/gorilla_15class_20k/ \
   --learnMSA . \
+  --hmm \
   --val_data /data/sukui_data/01_data/01_genomics_data/gene_structure
