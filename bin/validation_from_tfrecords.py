@@ -7,6 +7,8 @@
 import glob
 import os, sys, json, argparse
 import numpy as np
+import tqdm
+
 from data_generator import DataGenerator
 import tensorflow as tf
 
@@ -47,7 +49,7 @@ def main():
             trans=False,clamsa=args.clamsa
       )   
     
-    for j in range(args.val_size):
+    for j in tqdm.tqdm(range(args.val_size), desc='reading data', total=args.val_size):
         i = np.random.randint(0, args.batch_size)
         if args.clamsa:
             example_x, example_y, example_clamsa = next(generator)            
