@@ -169,15 +169,16 @@ def train_hmm_model(generator, model_save_dir, config, val_data=None,
         b_lr_sched = BatchLearningRateScheduler(peak=config["lr"], warmup=config["warmup"],
                                                 min_lr=config["min_lr"])
         model.save(model_save_dir + "/untrained.keras")
-        logging.info("start training")
-        model.fit(
-            generator,
-            epochs=config["num_epochs"],
-            validation_data=val_data,
-            steps_per_epoch=10,
-            validation_batch_size=config['batch_size'],
-            callbacks=[epoch_callback, csv_logger])
-        model.save(model_save_dir + "/last_model.keras")
+        if generator is not None:
+            logging.info("start training")
+            model.fit(
+                generator,
+                epochs=config["num_epochs"],
+                validation_data=val_data,
+                steps_per_epoch=10,
+                validation_batch_size=config['batch_size'],
+                callbacks=[epoch_callback, csv_logger])
+            model.save(model_save_dir + "/last_model.keras")
         logging.info("training done")
     return model
 
@@ -270,13 +271,13 @@ def train_clamsa(generator, model_save_dir, config, val_data=None, model_load=No
             model.compile(loss=cce_loss, optimizer=adam,
                           metrics=['accuracy'])
         model.summary()
-
-        model.fit(
-            generator,
-            epochs=config["num_epochs"],
-            steps_per_epoch=1000,
-            callbacks=[epoch_callback, csv_logger])
-        model.save(model_save_dir + "/last_model.keras")
+        if generator is not None:
+            model.fit(
+                generator,
+                epochs=config["num_epochs"],
+                steps_per_epoch=1000,
+                callbacks=[epoch_callback, csv_logger])
+            model.save(model_save_dir + "/last_model.keras")
     return model
 
 
@@ -331,13 +332,13 @@ def train_add_transformer2lstm(generator, model_save_dir, config, val_data=None,
             model.compile(loss=cce_loss, optimizer=adam,
                           metrics=['accuracy'])
         model.summary()
-
-        model.fit(
-            generator,
-            epochs=config["num_epochs"],
-            steps_per_epoch=1000,
-            callbacks=[epoch_callback, csv_logger])
-        model.save(model_save_dir + "/last_model.keras")
+        if generator is not None:
+            model.fit(
+                generator,
+                epochs=config["num_epochs"],
+                steps_per_epoch=1000,
+                callbacks=[epoch_callback, csv_logger])
+            model.save(model_save_dir + "/last_model.keras")
     return model
 
 
@@ -401,13 +402,14 @@ def train_lstm_model(generator, model_save_dir, config, val_data=None, model_loa
             model.compile(loss=cce_loss, optimizer=optimizer,
                           metrics=['accuracy'])
         model.summary()
-        logging.info("start training")
-        model.fit(
-            generator,
-            epochs=config["num_epochs"],
-            validation_data=val_data,
-            steps_per_epoch=1000,
-            callbacks=[epoch_callback, csv_logger])
+        if generator is not None:
+            logging.info("start training")
+            model.fit(
+                generator,
+                epochs=config["num_epochs"],
+                validation_data=val_data,
+                steps_per_epoch=1000,
+                callbacks=[epoch_callback, csv_logger])
         model.save(model_save_dir + "/last_model.keras")
         logging.info("training done")
     return model
@@ -552,7 +554,7 @@ def main():
         batch_size = 8
         batch_save_numb = 100000
     elif w_size == 9999:
-        batch_size = 16
+        batch_size = 32
         batch_save_numb = 1000
     elif w_size == 29997:
         batch_size = 120 * 4
@@ -562,7 +564,7 @@ def main():
             config_dict = json.load(f)
     else:
         config_dict = {
-            "num_epochs": 100,
+            "num_epochs": 200,
             'use_hmm': args.hmm,
             "loss_weights": False,
             # [1,1,1e3,1e3,1e3],

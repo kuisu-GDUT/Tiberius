@@ -1,13 +1,13 @@
 import sys, os, json, csv, argparse
-sys.path.append("../../programs/learnMSA")
+sys.path.append(".")
 sys.path.append("/home/gabriell/gene_pred_deepl/bin")
 sys.path.append("/home/gabriell/programs/learnMSA")
 sys.path.append("/home/jovyan/brain//programs/learnMSA")
 import subprocess as sp
 import numpy as np
-from gene_pred_hmm import  GenePredHMMLayer
-import tensorflow as tf
+# from gene_pred_hmm import enePredHMMLayer
 from transformers import AutoTokenizer, TFAutoModelForMaskedLM, TFEsmForMaskedLM
+import tensorflow as tf
 import tensorflow.keras as keras
 from learnMSA.msa_hmm.Viterbi import viterbi
 
@@ -26,6 +26,7 @@ def load_val_data(file, hmm_factor=False, reduce_output=True, trans=True):
     data = np.load(file)
     x_val = data["array1"]
     y_val = data["array2"]
+    print(f"x_val shape: {x_val}; y_val shape: {y_val}")
     
     if reduce_output:
         # reduce y_label size to 5
@@ -66,8 +67,10 @@ def load_val_data(file, hmm_factor=False, reduce_output=True, trans=True):
     return (x_val, y_val)
 
 def main():
-    args = parseCmd()    
-    val_data_path = f'/home/gabriell/deepl_data/tfrecords/data/99999_hmm/val/validation_lstm.npz'
+    args = parseCmd()
+    sys.path.insert(0, args.learnMSA)
+    # val_data_path = f'/home/gabriell/deepl_data/tfrecords/data/99999_hmm/val/validation_lstm.npz'
+    val_data_path = f'/home/share/huadjyin/home/s_sukui/03_project/01_GeneLLM/Tiberius/outputs/test_vit/temp1/lstm_predictions.npz'
     val_data = load_val_data(val_data_path)
     model = tf.keras.models.load_model(args.model, 
                                           custom_objects={'TFEsmForMaskedLM': TFEsmForMaskedLM})
@@ -87,6 +90,8 @@ def parseCmd():
         help='')
     parser.add_argument('--batch_size', type=int,
         help='')
+    parser.add_argument('--learnMSA', type=str, default='.',
+                        help='')
     
     return parser.parse_args()
 
