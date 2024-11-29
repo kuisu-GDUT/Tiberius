@@ -20,7 +20,7 @@ tf==2.10.0 对于CUDA支持不友好, 需要自己下载配置cuda drive, 但是
 ### Use in WuChao cluster
 ```markdown
 ssh s_sukui@27.18.114.42 -p 6122
-passwd: Sukui@1016
+passwd: *****
 ```
 ```shell
 source /home/share/huadjyin/home/s_sukui/envs/env_py38_torch17
