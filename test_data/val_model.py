@@ -1,12 +1,13 @@
 import sys, os, json, csv, argparse
 sys.path.append(".")
+sys.path.append("./bin")
 sys.path.append("/home/gabriell/gene_pred_deepl/bin")
 sys.path.append("/home/gabriell/programs/learnMSA")
 sys.path.append("/home/jovyan/brain//programs/learnMSA")
-import subprocess as sp
 import numpy as np
 # from gene_pred_hmm import enePredHMMLayer
 from transformers import AutoTokenizer, TFAutoModelForMaskedLM, TFEsmForMaskedLM
+from models import custom_cce_f1_loss
 import tensorflow as tf
 import tensorflow.keras as keras
 from learnMSA.msa_hmm.Viterbi import viterbi
@@ -26,7 +27,7 @@ def load_val_data(file, hmm_factor=False, reduce_output=True, trans=True):
     data = np.load(file)
     x_val = data["array1"]
     y_val = data["array2"]
-    print(f"x_val shape: {x_val}; y_val shape: {y_val}")
+    print(f"x_val shape: {x_val.shape}; y_val shape: {y_val.shape}")
     
     if reduce_output:
         # reduce y_label size to 5
@@ -68,12 +69,25 @@ def load_val_data(file, hmm_factor=False, reduce_output=True, trans=True):
 
 def main():
     args = parseCmd()
+    print(args)
     sys.path.insert(0, args.learnMSA)
     # val_data_path = f'/home/gabriell/deepl_data/tfrecords/data/99999_hmm/val/validation_lstm.npz'
-    val_data_path = f'/home/share/huadjyin/home/s_sukui/03_project/01_GeneLLM/Tiberius/outputs/test_vit/temp1/lstm_predictions.npz'
-    val_data = load_val_data(val_data_path)
-    model = tf.keras.models.load_model(args.model, 
-                                          custom_objects={'TFEsmForMaskedLM': TFEsmForMaskedLM})
+    val_data_path = args.val_data_path
+    os.path.exists(val_data_path)
+    val_data = load_val_data(val_data_path, reduce_output=False, trans=False)
+
+    custom_objects = {}
+    f1_factor = 2
+    if f1_factor:
+        cce_loss = custom_cce_f1_loss(2, batch_size=args.batch_size)
+        custom_objects['custom_cce_f1_loss'] = cce_loss
+        custom_objects['loss_'] = cce_loss
+    else:
+        cce_loss = tf.keras.losses.CategoricalCrossentropy()
+    model = tf.keras.models.load_model(
+        args.model,
+        custom_objects=custom_objects
+    )
     result = model.evaluate(x=val_data[0], y=val_data[1], batch_size=args.batch_size, verbose=1)
     print(';'.join(model.metrics_names), '\n', ';'.join(list(map(str, result))))
 
@@ -86,13 +100,15 @@ def parseCmd():
     parser = argparse.ArgumentParser(description='')
 #     parser.add_argument('--species', type=str,
 #         help='')
-    parser.add_argument('--model', type=str,
+    parser.add_argument('--model', required=True, type=str,
         help='')
+    parser.add_argument('--val_data_path', type=str, required=True, default='.',
+                        help='')
     parser.add_argument('--batch_size', type=int,
         help='')
     parser.add_argument('--learnMSA', type=str, default='.',
                         help='')
-    
+
     return parser.parse_args()
 
 if __name__ == '__main__':
