@@ -129,8 +129,9 @@ def get_species_data_hmm(genome_path='', annot_path='', species='', seq_len=5000
     f_chunk = fasta.get_flat_chunks(strand='+', pad=False)
     del fasta
     print(f_chunk.shape)
-    full_f_chunks = np.concatenate((f_chunk[::-1, ::-1, [3, 2, 1, 0, 4, 5]],
-                                    f_chunk), axis=0)
+    full_f_chunks = np.concatenate((f_chunk,
+                                    f_chunk[::-1, ::-1, [3, 2, 1, 0, 4, 5]]),
+                                   axis=0)
 
     del f_chunk
     # del fasta
@@ -143,8 +144,8 @@ def get_species_data_hmm(genome_path='', annot_path='', species='', seq_len=5000
                                       seqs, transition=transition)
     del ref_anno.gene_structures
 
-    full_r_chunks = np.concatenate((ref_anno.get_flat_chunks_hmm(seq_names, strand='-'),
-                                    ref_anno.get_flat_chunks_hmm(seq_names, strand='+')),
+    full_r_chunks = np.concatenate((ref_anno.get_flat_chunks_hmm(seq_names, strand='+'),
+                                    ref_anno.get_flat_chunks_hmm(seq_names, strand='-')),
                                    axis=0)
     del ref_anno
 
@@ -234,7 +235,7 @@ def write_pkl(fasta, ref, out, split=1, ref_phase=None, trans=False, clamsa=np.a
 
     print(f"clamsa.shape {clamsa.shape}, fasta shape: {fasta.shape}, ref shape: {ref.shape}, trans: {trans}")
     for idx, (seq, label) in tqdm.tqdm(enumerate(zip(fasta, ref)), desc='Writing pkl files', total=len(fasta)):
-        if seq_len // 2 > idx:
+        if seq_len // 2 < idx:
             strand = "+"
             start_idx = (idx - seq_len // 2) * seq_len
         else:
