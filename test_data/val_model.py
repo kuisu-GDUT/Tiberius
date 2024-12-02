@@ -89,8 +89,8 @@ def main():
         args.model,
         custom_objects=custom_objects
     )
-    result = model.evaluate(x=val_data[0], y=val_data[1], batch_size=args.batch_size, verbose=1)
-    print(';'.join(model.metrics_names), '\n', ';'.join(list(map(str, result))))
+    # result = model.evaluate(x=val_data[0], y=val_data[1], batch_size=args.batch_size, verbose=1)
+    # print(';'.join(model.metrics_names), '\n', ';'.join(list(map(str, result))))
     y_predicts = model.predict(val_data[0], batch_size=args.batch_size, verbose=1)
     print(f"predict shape: {y_predicts.shape}; labels shape: {val_data[1].shape}")
     cal_metric(val_data[1], y_predicts)
