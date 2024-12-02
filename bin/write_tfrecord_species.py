@@ -237,10 +237,10 @@ def write_pkl(fasta, ref, out, split=1, ref_phase=None, trans=False, clamsa=np.a
     for idx, (seq, label) in tqdm.tqdm(enumerate(zip(fasta, ref)), desc='Writing pkl files', total=len(fasta)):
         if idx < seq_len // 2:
             strand = "+"
-            start_idx = idx * seq_len
+            start_idx = idx * seq_len + 1
         else:
             strand = "-"
-            start_idx = (idx - seq_len // 2) * seq_len
+            start_idx = (idx - seq_len // 2) * seq_len + 1
         data = {
             "input_id": seq,
             "seq": decode_sequence(seq),
