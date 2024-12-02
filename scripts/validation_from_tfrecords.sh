@@ -7,7 +7,7 @@ cd $TIBERIUS_ROOT
 python bin/validation_from_tfrecords.py \
   --tfrec_dir ~/02_data/07_genomics_data/Tiberius/tfrecords/Homo_sapiens/ \
   --species val_species_filtered.txt \
-  --batch_size 16 \
-  --val_size 1000 \
+  --batch_size 1 \
+  --val_size 10 \
   --output_size 7 \
-  --out outputs/Human_15class_tfrecord/validation_data_1K
+  --out outputs/Human_15class_tfrecord/validation_data_10

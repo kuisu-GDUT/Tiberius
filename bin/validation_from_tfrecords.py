@@ -5,6 +5,7 @@
 # Creates a numpy array from sampels from tfrecords files.
 # ==============================================================
 import glob
+import logging
 import os, sys, json, argparse
 import numpy as np
 import pandas as pd
@@ -28,8 +29,12 @@ def read_species(file_name):
         species = f_h.read().strip().split('\n')
     return [s for s in species if s and s[0] != '#']
 
+def set_seed(seed=42):
+    np.random.seed(seed)
+    tf.random.set_seed(seed)
 
 def main():
+    set_seed(42)
     args = parseCmd()
     # species = read_species(args.species)
     # file_paths = [f'{args.tfrec_dir}/{s}_{i}.tfrecords' for s in species for i in range(args.tfrec_per_species)]
@@ -38,6 +43,7 @@ def main():
     file_paths = []
     for specie in species:
         file_paths.extend(glob.glob(f'{args.tfrec_dir}/{specie}_*.tfrecords'))
+    logging.info(f'Found {len(file_paths)} val files')
     data_x = []
     data_y = []
     data_clamsa = []
@@ -63,6 +69,8 @@ def main():
             example_x, example_y = next(generator)
         data_x.append(example_x[i])
         data_y.append(example_y[i])
+        onehot_label = np.argmax(data_y, axis=-1)
+        print(f"j:{j}; i:{i};  label: {onehot_label.flatten()[:10]}")
 
     data_y = np.array(data_y)
     data_x = np.array(data_x)
@@ -108,4 +116,5 @@ def parseCmd():
 
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO)
     main()

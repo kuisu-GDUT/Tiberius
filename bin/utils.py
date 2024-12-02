@@ -2,6 +2,7 @@ from sklearn.metrics import matthews_corrcoef, f1_score, accuracy_score, recall_
 import numpy as np
 import json
 
+
 def cal_metric(y_true, y_pred, ignore_index=9):
     """Calculates the Matthews correlation coefficient for binary classification.
 
@@ -48,6 +49,7 @@ def cal_metric(y_true, y_pred, ignore_index=9):
         print("Confusion matrix is too large, only show the first 9x9 part")
     result["confu_matrix"] = str(confu_matrix)
     print(f"eval metric: \n{json.dumps(result)}")
+
 
 def tiberius_reduce_labels(y_batch: np.ndarray, output_size=7):
     """

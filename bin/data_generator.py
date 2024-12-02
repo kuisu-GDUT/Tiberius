@@ -111,7 +111,7 @@ class DataGenerator:
             tf.data.Dataset: Processed dataset containing input and output tensors.
         """       
         # dataset = tf.data.TFRecordDataset(self.file_path, compression_type='GZIP')        
-        filepath_dataset = tf.data.Dataset.list_files(self.file_path, shuffle=True)
+        filepath_dataset = tf.data.Dataset.list_files(self.file_path, shuffle=self.shuffle)
 
         threads = 96
         # Interleave the reading of these files, parsing tfrecord files in parallel.
