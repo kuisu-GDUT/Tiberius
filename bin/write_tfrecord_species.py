@@ -232,13 +232,12 @@ def write_pkl(fasta, ref, out, split=1, ref_phase=None, trans=False, clamsa=np.a
     ref = ref.astype(np.int32)
     seq_len = fasta.shape[1]
 
-    print(f"clamsa.shape {clamsa.shape}, fasta shape: {fasta.shape}, trans: {trans}")
+    print(f"clamsa.shape {clamsa.shape}, fasta shape: {fasta.shape}, ref shape: {ref.shape}, trans: {trans}")
     for idx, (seq, label) in tqdm.tqdm(enumerate(zip(fasta, ref)), desc='Writing pkl files', total=len(fasta)):
         if seq_len // 2 > idx:
             strand = "+"
         else:
             strand = "-"
-        out = f'{out}_{strand}'
         start_idx = idx * seq_len
         data = {
             "input_id": seq,
@@ -248,7 +247,7 @@ def write_pkl(fasta, ref, out, split=1, ref_phase=None, trans=False, clamsa=np.a
             "start_idx": start_idx,
             "end_idx": start_idx + seq_len,
         }
-        with open(f'{out}_{start_idx}-{start_idx + seq_len}.pkl', 'wb') as f:
+        with open(f'{out}_{strand}_{start_idx}-{start_idx + seq_len}.pkl', 'wb') as f:
             pickle.dump(data, f)
 
 
@@ -410,7 +409,7 @@ def write_species_data_hmm(
         print(f"process seq: {seq_name}, len:{seq_len}")
         seq_lens = [seq_len]
         seq_names = [seq_name]
-        out_seq_name = f"{out_name}_{seq_name}_"
+        out_seq_name = f"{out_name}_{seq_name}"
 
         fasta.encode_sequences(seq=[seq_name])
         # seqs = [len(s) for s in fasta.sequences]
@@ -451,8 +450,7 @@ def write_species_data_hmm(
             elif args.np:
                 write_numpy(full_f_chunks, full_r_chunks, out_seq_name, split=split)
             elif args.pkl:
-                write_pkl(full_f_chunks, full_r_chunks, out_seq_name, split=split,
-                          start_positive_strand=start_positive_strand)
+                write_pkl(full_f_chunks, full_r_chunks, out_seq_name, split=split)
             else:
                 write_tf_record(full_f_chunks, full_r_chunks, out_seq_name, split=split)
 
