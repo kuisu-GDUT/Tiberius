@@ -5,14 +5,14 @@ WEIGHT_TIBERIUS=/home/share/huadjyin/home/s_sukui/03_project/01_GeneLLM/Tiberius
 WEIGHT_HUMAN_134=/home/share/huadjyin/home/s_sukui/03_project/01_GeneLLM/Tiberius/outputs/Human_15class_tfrecord/epoch_134
 cd $TIBERIUS_ROOT
 
-python test_data/val_model_pkl.py \
-  --model $WEIGHT_HUMAN_134 \
-  --batch_size 100 \
-  --learnMSA . \
-  --val_data_path /home/share/huadjyin/home/s_sukui/02_data/07_genomics_data/Tiberius/tfrecords/Homo_sapiens
-
 #python test_data/val_model_pkl.py \
-#  --model ./outputs/Human_15class_tfrecord/epoch_134 \
-#  --batch_size 16 \
+#  --model $WEIGHT_HUMAN_134 \
+#  --batch_size 100 \
 #  --learnMSA . \
-#  --val_data_path /home/share/huadjyin/home/s_sukui/02_data/07_genomics_data/multi_species/intergenic
+#  --val_data_path /home/share/huadjyin/home/s_sukui/02_data/07_genomics_data/Tiberius/tfrecords/Homo_sapiens
+
+python test_data/val_model_pkl.py \
+  --model ./outputs/Human_15class_tfrecord/epoch_134 \
+  --batch_size 10 \
+  --learnMSA . \
+  --val_data_path /home/share/huadjyin/home/s_sukui/02_data/07_genomics_data/multi_species/intergenic

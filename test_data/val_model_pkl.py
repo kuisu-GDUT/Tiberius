@@ -18,7 +18,7 @@ from data_generator import DataGenerator
 from t2t_pkl_dataset import T2TTiberiusDataset, pytorch_to_tensorflow_dataset
 from transformers import AutoTokenizer, TFAutoModelForMaskedLM, TFEsmForMaskedLM
 from models import custom_cce_f1_loss
-from utils import cal_metric
+from utils import cal_metric, tiberius_reduce_labels
 import tensorflow as tf
 import tensorflow.keras as keras
 from learnMSA.msa_hmm.Viterbi import viterbi
@@ -104,6 +104,8 @@ def eval_mode_pkl(model, val_data):
     # val_tmp_data = iter(val_data.dataset)
     y_predicts = np.concatenate(predicts, axis=0)
     labels = np.concatenate(labels, axis=0)
+
+    y_predicts = tiberius_reduce_labels(y_predicts, val_data[1].shape[-1])
     print(f"predict shape: {y_predicts.shape}; labels shape: {labels.shape}")
     cal_metric(labels, y_predicts)
 
@@ -125,7 +127,7 @@ def eval_model_tfrecord(model, val_data):
     y_catagories = np.argmax(labels, axis=-1)
     y_df = pd.DataFrame(y_catagories.flatten())
     print(f"label distribution each class: {y_df.value_counts()}")
-    print(f"data_x shape: {y_predicts.shape}; data_y shape: {labels.shape}; y_catagories: {np.unique(y_catagories)}")
+    print(f"y_predicts shape: {y_predicts.shape}; data_y shape: {labels.shape}; y_catagories: {np.unique(y_catagories)}")
 
     print(f"predict shape: {y_predicts.shape}; labels shape: {labels.shape}")
     cal_metric(labels, y_predicts)
@@ -204,6 +206,33 @@ def main_eval_model_tfrecord(args):
     eval_model_tfrecord(model, val_data)
 
 
+def main_eval_model_pkl(args):
+    print(args)
+    sys.path.insert(0, args.learnMSA)
+    # val_data_path = f'/home/gabriell/deepl_data/tfrecords/data/99999_hmm/val/validation_lstm.npz'
+    val_data_path = args.val_data_path
+    os.path.exists(val_data_path)
+    val_data = load_t2t_data_pkl(
+        dest_path=args.val_data_path,
+        batch_size=args.batch_size,
+        dataset_name="homo_sapiens_tiberius_20K",
+        split="test"
+    )
+
+    custom_objects = {}
+    f1_factor = 2
+    if f1_factor:
+        cce_loss = custom_cce_f1_loss(2, batch_size=args.batch_size)
+        custom_objects['custom_cce_f1_loss'] = cce_loss
+        custom_objects['loss_'] = cce_loss
+    else:
+        cce_loss = tf.keras.losses.CategoricalCrossentropy()
+    model = tf.keras.models.load_model(
+        args.model,
+        custom_objects=custom_objects
+    )
+    eval_model_tfrecord(model, val_data)
+
 def main():
     args = parseCmd()
     print(args)
@@ -230,8 +259,6 @@ def main():
         args.model,
         custom_objects=custom_objects
     )
-    # result = model.evaluate(x=val_data[0], y=val_data[1], batch_size=args.batch_size, verbose=1)
-    # print(';'.join(model.metrics_names), '\n', ';'.join(list(map(str, result))))
     eval_model_tfrecord(model, val_data)
 
 
@@ -269,4 +296,4 @@ if __name__ == '__main__':
     args = parseCmd()
     set_seed(42)
     sys.path.insert(0, args.learnMSA)
-    main_eval_model_tfrecord(args)
+    main_eval_model_pkl(args)
