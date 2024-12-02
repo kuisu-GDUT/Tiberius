@@ -151,6 +151,42 @@ def get_species_data_hmm(genome_path='', annot_path='', species='', seq_len=5000
     return full_f_chunks, full_r_chunks
 
 
+def encode_sequence(sequence):
+    table = np.zeros((256, 6), dtype=np.uint8)
+    table[:, 4] = 1  # N is encoded as [0, 0, 0, 0, 1, 0]
+
+    # Set specific labels for A, C, G, T
+    table[ord('A'), :] = [1, 0, 0, 0, 0, 0]
+    table[ord('C'), :] = [0, 1, 0, 0, 0, 0]
+    table[ord('G'), :] = [0, 0, 1, 0, 0, 0]
+    table[ord('T'), :] = [0, 0, 0, 1, 0, 0]
+    # Set labels for a, c, g, t with softmasking indicator
+    table[ord('a'), :] = [1, 0, 0, 0, 0, 1]
+    table[ord('c'), :] = [0, 1, 0, 0, 0, 1]
+    table[ord('g'), :] = [0, 0, 1, 0, 0, 1]
+    table[ord('t'), :] = [0, 0, 0, 1, 0, 1]
+
+    # Convert the sequence to integer sequence
+    int_seq = np.frombuffer(sequence.encode('ascii'), dtype=np.uint8)
+    return table[int_seq]
+
+
+def decode_sequence(encoded_seq):
+    index_to_nucleotide = np.array(['A', 'C', 'G', 'T', 'N', 'a', 'c', 'g', 't'])
+    nucleotide_indices = np.argmax(encoded_seq, axis=-1)
+    if encoded_seq.shape[-1] == 6:
+        soft_mask = encoded_seq[..., -1] == 1
+        nucleotide_indices[soft_mask] += 5
+    decoded_seq = index_to_nucleotide[nucleotide_indices]
+    decoded_seq_str = ''.join(decoded_seq)
+    check_flag = encoded_seq != encode_sequence(decoded_seq_str)
+    if check_flag.any():
+        print(f"decoded_seq_str: {decoded_seq_str}")
+        print(f"encode seq: {encoded_seq}")
+    # if encoded_seq != encode_sequence(decoded_seq_str):
+    return decoded_seq_str
+
+
 def write_h5(fasta, ref, out, ref_phase=None, split=100,
              trans=False, clamsa=np.array([])):
     fasta = fasta.astype(np.int32)
@@ -196,20 +232,27 @@ def write_pkl(fasta, ref, out, split=1, ref_phase=None, trans=False, clamsa=np.a
     ref = ref.astype(np.int32)
     seq_len = fasta.shape[1]
 
-    print(clamsa.shape, fasta.shape, trans)
+    print(f"clamsa.shape {clamsa.shape}, fasta shape: {fasta.shape}, trans: {trans}")
     for idx, (seq, label) in tqdm.tqdm(enumerate(zip(fasta, ref)), desc='Writing pkl files', total=len(fasta)):
+        if seq_len // 2 > idx:
+            strand = "+"
+        else:
+            strand = "-"
+        out = f'{out}_{strand}'
         start_idx = idx * seq_len
         data = {
-            "seq": seq,
+            "input_id": seq,
+            "seq": decode_sequence(seq),
             "annotation": label,
+            "strand": out,
             "start_idx": start_idx,
             "end_idx": start_idx + seq_len,
         }
-        with open(f'{out}_{start_idx}-{start_idx+seq_len}.pkl', 'wb') as f:
+        with open(f'{out}_{start_idx}-{start_idx + seq_len}.pkl', 'wb') as f:
             pickle.dump(data, f)
 
-def write_tf_record(fasta, ref, out, ref_phase=None, split=100, trans=False, clamsa=np.array([])):
 
+def write_tf_record(fasta, ref, out, ref_phase=None, split=100, trans=False, clamsa=np.array([])):
     indices = np.arange(fasta.shape[0])
     np.random.shuffle(indices)
     print(f"clamsa shape: {clamsa.shape}' fasta  shape: {fasta.shape}; ref shape: {ref.shape}; trans: {trans}")
@@ -367,13 +410,14 @@ def write_species_data_hmm(
         print(f"process seq: {seq_name}, len:{seq_len}")
         seq_lens = [seq_len]
         seq_names = [seq_name]
-        out_seq_name = f"{out_name}_{seq_name}_-+"
+        out_seq_name = f"{out_name}_{seq_name}_"
 
         fasta.encode_sequences(seq=[seq_name])
         # seqs = [len(s) for s in fasta.sequences]
         # seq_names = fasta.sequence_names
         f_chunk = fasta.get_flat_chunks(strand='+', sequence_name=seq_names, pad=False)
-        print(f_chunk.shape)
+        print("fasta strand (+) shape:", f_chunk.shape)
+        start_positive_strand = f_chunk.shape[1]
         full_f_chunks = np.concatenate(
             (f_chunk[::-1, ::-1, [3, 2, 1, 0, 4, 5]], f_chunk),
             axis=0)
@@ -407,7 +451,8 @@ def write_species_data_hmm(
             elif args.np:
                 write_numpy(full_f_chunks, full_r_chunks, out_seq_name, split=split)
             elif args.pkl:
-                write_pkl(full_f_chunks, full_r_chunks, out_seq_name, split=split)
+                write_pkl(full_f_chunks, full_r_chunks, out_seq_name, split=split,
+                          start_positive_strand=start_positive_strand)
             else:
                 write_tf_record(full_f_chunks, full_r_chunks, out_seq_name, split=split)
 
@@ -469,7 +514,7 @@ def parseCmd():
     parser.add_argument('--wsize', type=int,
                         help='', required=True)
     parser.add_argument('--transition', action='store_true',
-        help='')
+                        help='')
     parser.add_argument('--transformer', action='store_true',
                         help='')
     parser.add_argument('--clamsa', type=str, default='',
