@@ -235,17 +235,17 @@ def write_pkl(fasta, ref, out, split=1, ref_phase=None, trans=False, clamsa=np.a
 
     print(f"clamsa.shape {clamsa.shape}, fasta shape: {fasta.shape}, ref shape: {ref.shape}, trans: {trans}")
     for idx, (seq, label) in tqdm.tqdm(enumerate(zip(fasta, ref)), desc='Writing pkl files', total=len(fasta)):
-        if seq_len // 2 < idx:
+        if idx < seq_len // 2:
             strand = "+"
-            start_idx = (idx - seq_len // 2) * seq_len
+            start_idx = idx * seq_len
         else:
             strand = "-"
-            start_idx = idx * seq_len
+            start_idx = (idx - seq_len // 2) * seq_len
         data = {
             "input_id": seq,
             "seq": decode_sequence(seq),
             "annotation": label,
-            "strand": out,
+            "strand": strand,
             "start_idx": start_idx,
             "end_idx": start_idx + seq_len,
         }
@@ -420,7 +420,8 @@ def write_species_data_hmm(
         print("fasta strand (+) shape:", f_chunk.shape)
         start_positive_strand = f_chunk.shape[1]
         full_f_chunks = np.concatenate(
-            (f_chunk[::-1, ::-1, [3, 2, 1, 0, 4, 5]], f_chunk),
+            (f_chunk,
+             f_chunk[::-1, ::-1, [3, 2, 1, 0, 4, 5]]),
             axis=0)
 
         del f_chunk
@@ -433,7 +434,7 @@ def write_species_data_hmm(
             transition=transition)
 
         full_r_chunks = np.concatenate(
-            (ref_anno.get_flat_chunks_hmm(seq_names, strand='-'), ref_anno.get_flat_chunks_hmm(seq_names, strand='+')),
+            (ref_anno.get_flat_chunks_hmm(seq_names, strand='+'), ref_anno.get_flat_chunks_hmm(seq_names, strand='-')),
             axis=0)
 
         if args.transformer:
