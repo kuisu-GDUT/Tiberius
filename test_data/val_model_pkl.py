@@ -15,7 +15,7 @@ import tqdm
 import numpy as np
 from data_generator import DataGenerator
 # from gene_pred_hmm import enePredHMMLayer
-from t2t_pkl_dataset import T2TTiberiusDataset, pytorch_to_tensorflow_dataset
+from t2t_pkl_dataset import T2TTiberiusDataset,T2TTiberiusTfrecordDataset, pytorch_to_tensorflow_dataset
 from transformers import AutoTokenizer, TFAutoModelForMaskedLM, TFEsmForMaskedLM
 from models import custom_cce_f1_loss
 from utils import cal_metric, tiberius_reduce_labels
@@ -53,13 +53,14 @@ def decode_one_hot(encoded_seq):
 
 def load_t2t_data_pkl(dest_path=None, batch_size=4, max_length=9999, dataset_name="gene_finding", split="train"):
     # load bend data
-    t2t_dataset = T2TTiberiusDataset(
+    t2t_dataset = T2TTiberiusTfrecordDataset(
         dest_path=dest_path,
         split=split,
         dataset_name=dataset_name,
         max_length=max_length,
         read_strand=False,
     )
+    print("t2t_dataset", len(t2t_dataset))
     bend_dataset = pytorch_to_tensorflow_dataset(t2t_dataset)
     bend_dataset = bend_dataset.batch(batch_size).prefetch(tf.data.AUTOTUNE)
     return bend_dataset
@@ -120,7 +121,9 @@ def eval_model_tfrecord(model, val_data):
         y_predicts.append(y_predict)
         labels.append(label)
         onehot_label = np.argmax(labels, axis=-1)
-        print(f"i:{i};  label: {onehot_label.flatten()[:10]}")
+        print(f"i:{i}; predict shape: {y_predict.shape}, feature shape: {feature.shape}  label: {onehot_label.flatten()[:10]}")
+        if i > 50:
+            break
     y_predicts = np.concatenate(y_predicts, axis=0)
     labels = np.concatenate(labels, axis=0)
 
@@ -215,8 +218,8 @@ def main_eval_model_pkl(args):
     val_data = load_t2t_data_pkl(
         dest_path=args.val_data_path,
         batch_size=args.batch_size,
-        dataset_name="homo_sapiens_tiberius_20K",
-        split="test"
+        dataset_name="homo_sapiens_tiberius_tfrecord_10K",
+        split="val"
     )
 
     custom_objects = {}
