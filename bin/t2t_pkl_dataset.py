@@ -10,8 +10,10 @@ import tensorflow as tf
 from transformers import PreTrainedTokenizerBase, DataCollatorForLanguageModeling, DataCollatorWithPadding
 from transformers import PreTrainedTokenizerBase, DataCollatorWithPadding
 
+from utils import tiberius_reduce_labels
+
 baseComplement = {'A': 'T', 'C': 'G', 'G': 'C', 'T': 'A', 'a': 't', 'c': 'g', 'g': 'c', 't': 'a'}
-LABEL_NUM = 15
+LABEL_NUM = 7
 PADDING_TOKEN = "N"
 PADDING_TOKEN_ID = 9
 
@@ -54,6 +56,7 @@ class T2TTiberiusDataset(Dataset):
         self.sequences = data
         self.max_length = max_length
         self.labels = None
+        self.output_size = kwargs.get("output_size", LABEL_NUM)
         self.mlm = kwargs.get("mlm", False)
         self.mlm_probability = kwargs.get("mlm_probability", 0.15)
 
@@ -79,6 +82,10 @@ class T2TTiberiusDataset(Dataset):
             label += [PADDING_TOKEN_ID] * pad_num
         input_ids = self.tokenizer(seq)
         input_ids = np.array(input_ids, dtype=np.int64)
+
+        # reduce label
+        if label.shape[-1] != self.output_size:
+            label = tiberius_reduce_labels(label, self.output_size)
         # label = np.array(label, dtype=np.int64)
         # label = np.eye(10)[label]
         # print(f"input_ids shape: {input_ids.shape}, label shape: {label.shape}")
@@ -104,6 +111,37 @@ class T2TTiberiusDataset(Dataset):
         int_seq = np.frombuffer(sequence.encode('ascii'), dtype=np.uint8)
         # Perform one-hot encoding
         return table[int_seq]
+
+
+class T2TTiberiusTfrecordDataset(T2TTiberiusDataset):
+    def __getitem__(self, idx):
+        with open(self.sequences[idx], "rb") as f:
+            data = pickle.load(f)
+        # TODO down sample with 0.5%
+        assert "seq" in data, f"seq not in data: {data.keys()}"
+        seq = data["seq"]
+        label = data["annotation"]
+        assert len(seq) == label.shape[0], f"seq len: {len(seq)}, label len: {label.shape[0]}"
+
+        if len(seq) > self.max_length:
+            start_idx, end_idx = random_sample_seq(seq, self.max_length)
+            seq = seq[start_idx:end_idx]
+            label = label[start_idx:end_idx]
+        # else:
+        #     logging.warning(f"seq len: {len(seq)}, max_length: {self.max_length}")
+        input_ids = seq
+        input_ids = np.array(input_ids, dtype=np.int64)
+
+        # reduce label
+        if label.shape[-1] != self.output_size:
+            label = tiberius_reduce_labels(label, self.output_size)
+        # label = np.array(label, dtype=np.int64)
+        # label = np.eye(10)[label]
+        # print(f"input_ids shape: {input_ids.shape}, label shape: {label.shape}")
+        return input_ids, label
+
+    def __len__(self):
+        return len(self.sequences)
 
 
 def pytorch_to_tensorflow_dataset(pytorch_dataset):
