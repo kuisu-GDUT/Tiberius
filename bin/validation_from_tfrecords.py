@@ -7,6 +7,8 @@
 import glob
 import logging
 import os, sys, json, argparse
+import random
+
 import numpy as np
 import pandas as pd
 import tqdm
@@ -30,8 +32,11 @@ def read_species(file_name):
     return [s for s in species if s and s[0] != '#']
 
 def set_seed(seed=42):
+    random.seed(seed)
     np.random.seed(seed)
     tf.random.set_seed(seed)
+    tf.compat.v1.random.set_random_seed(seed)
+    tf.compat.v2.random.set_seed(seed)
 
 def main():
     set_seed(42)
@@ -43,7 +48,7 @@ def main():
     file_paths = []
     for specie in species:
         file_paths.extend(glob.glob(f'{args.tfrec_dir}/{specie}_*.tfrecords'))
-    logging.info(f'Found {len(file_paths)} val files')
+    logging.info(f'Found {len(file_paths)} val files.\n{file_paths}')
     data_x = []
     data_y = []
     data_clamsa = []
@@ -52,8 +57,8 @@ def main():
         file_path=file_paths,
         batch_size=args.batch_size,
         shuffle=False,
-        repeat=True,
-        # max_nums=100000,
+        repeat=False,
+        max_nums=2,
         filter=False,
         output_size=args.output_size,
         hmm_factor=0,
