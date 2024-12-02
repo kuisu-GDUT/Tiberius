@@ -47,7 +47,7 @@ def main():
         batch_size=args.batch_size,
         shuffle=False,
         repeat=True,
-        max_nums=10000,
+        # max_nums=100000,
         filter=False,
         output_size=args.output_size,
         hmm_factor=0,

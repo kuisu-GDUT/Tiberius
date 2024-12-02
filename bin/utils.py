@@ -48,3 +48,67 @@ def cal_metric(y_true, y_pred, ignore_index=9):
         print("Confusion matrix is too large, only show the first 9x9 part")
     result["confu_matrix"] = str(confu_matrix)
     print(f"eval metric: \n{json.dumps(result)}")
+
+def tiberius_reduce_labels(y_batch: np.ndarray, output_size=7):
+    """
+    Set output size for the model with tiberius labels, only support y_batch dim are 7 and 15
+    :param output_size:
+    :return:
+    """
+    # reformat labels so that they fit the output size
+    if y_batch.shape[-1] == 7:
+        if output_size == 5:
+            # reduce intron labels
+            y_new = np.zeros(list(y_batch.shape[:-1]) + [output_size], np.float32)
+            y_new[..., 0] = y_batch[..., 0]
+            y_new[..., 1] = np.sum(y_batch[..., 1:4], axis=-1)
+            y_new[..., 2:] = y_batch[..., 4:]
+        elif output_size == 3:
+            # reduce intron and exon labels
+            y_new = np.zeros(list(y_batch.shape[:-1]) + [output_size], np.float32)
+            y_new[..., 0] = y_batch[..., 0]
+            y_new[..., 1] = np.sum(y_batch[..., 1:4], axis=-1)
+            y_new[..., 2] = np.sum(y_batch[..., 4:], axis=-1)
+        elif output_size == 15:
+            # reduce intron and exon labels
+            y_new = np.zeros(list(y_batch.shape[:-1]) + [output_size], np.float32)
+            y_new[..., :y_batch.shape[-1]] = y_batch
+        else:
+            y_new = y_batch.astype(np.float32)
+        y_batch = y_new
+    elif y_batch.shape[-1] == 15:
+        if output_size == 3:
+            # reduce intron and exon labels
+            y_new = np.zeros(list(y_batch.shape[:-1]) + [output_size], np.float32)
+            y_new[..., 0] = y_batch[..., 0]
+            y_new[..., 1] = np.sum(y_batch[..., 1:4], axis=-1)
+            y_new[..., 2] = np.sum(y_batch[..., 4:], axis=-1)
+        elif output_size == 5:
+            y_new = np.zeros(list(y_batch.shape[:-1]) + [output_size], np.float32)
+            y_new[..., 0] = y_batch[..., 0]
+            y_new[..., 1] = np.sum(y_batch[..., 1:4], axis=-1)
+            y_new[..., 2] = np.sum(y_batch[..., [4, 7, 10, 12]], axis=-1)
+            y_new[..., 3] = np.sum(y_batch[..., [5, 8, 13]], axis=-1)
+            y_new[..., 4] = np.sum(y_batch[..., [6, 9, 11, 14]], axis=-1)
+        elif output_size == 7:
+            y_new = np.zeros(list(y_batch.shape[:-1]) + [output_size], np.float32)
+            y_new[..., :4] = y_batch[..., :4]
+            y_new[..., 4] = np.sum(y_batch[..., [4, 7, 10, 12]], axis=-1)
+            y_new[..., 5] = np.sum(y_batch[..., [5, 8, 13]], axis=-1)
+            y_new[..., 6] = np.sum(y_batch[..., [6, 9, 11, 14]], axis=-1)
+        elif output_size == 15:
+            y_new = y_batch.astype(np.float32)
+        elif output_size == 2:
+            y_new = np.zeros(list(y_batch.shape[:-1]) + [output_size], np.float32)
+            y_new[..., 0] = np.sum(y_batch[..., :4], axis=-1)
+            y_new[..., 1] = np.sum(y_batch[..., 4:], axis=-1)
+        elif output_size == 4:
+            y_new = np.zeros(list(y_batch.shape[:-1]) + [output_size], np.float32)
+            y_new[..., 0] = np.sum(y_batch[..., :4], axis=-1)
+            y_new[..., 1] = np.sum(y_batch[..., [4, 7, 10, 12]], axis=-1)
+            y_new[..., 2] = np.sum(y_batch[..., [5, 8, 13]], axis=-1)
+            y_new[..., 3] = np.sum(y_batch[..., [6, 9, 11, 14]], axis=-1)
+        else:
+            raise ValueError(f"output size {output_size} not supported, only support 7, 15 classes")
+        y_batch = y_new
+    return y_batch
