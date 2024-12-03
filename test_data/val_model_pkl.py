@@ -1,5 +1,6 @@
 import glob
 import logging
+import pickle
 import random
 import sys, os, json, csv, argparse
 
@@ -90,7 +91,7 @@ def load_t2t_data_tfrecord(dest_path, batch_size=4, output_size=7):
     return val_data
 
 
-def eval_model(model, val_data, save_path=None, output_size: int = 7):
+def eval_model(model, val_data, save_path=None, output_size: int = 7, save_prefix="val"):
     logging.info("Evaluating model on validation data")
     labels = []
     features = []
@@ -118,8 +119,18 @@ def eval_model(model, val_data, save_path=None, output_size: int = 7):
     #
     # save numpy result
     if save_path is not None:
-        np.savez(os.path.join(save_path, "tiberius_predict_pkl_result"),
+        output_label = tiberius_reduce_labels(labels, output_size=3)
+        save_name = f"{save_prefix}_tiberius_predict_pkl_result"
+        np.savez(os.path.join(save_path, save_name),
                  labels=labels, predicts=y_predicts, features=features)
+        result = {
+            "labels": labels,
+            "predicts": y_predicts,
+            "features": features,
+            "logits": output_label
+        }
+        with open(os.path.join(save_path, f"{save_name}.pkl"), "wb") as f:
+            pickle.dump(result, f)
     # data = np.load(os.path.join(save_path, "tiberius_predict_pkl_result.npz"))
     # labels = data["labels"]
     # y_predicts = data["predicts"]
@@ -235,7 +246,7 @@ def main_eval_model_pkl(args):
         args.model,
         custom_objects=custom_objects
     )
-    eval_model(model, val_data, save_path=f"{args.save_path}", output_size=7)
+    eval_model(model, val_data, save_path=f"{args.save_path}", output_size=7, save_prefix=args.val_data_name)
 
 
 def main():
