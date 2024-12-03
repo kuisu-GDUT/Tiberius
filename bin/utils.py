@@ -44,6 +44,7 @@ def cal_metric(y_true, y_pred, ignore_index=9):
         }
     print(f"label: {label}, max label: {label.max()}")
     confu_matrix = confusion_matrix(label, predict)
+    print("confusion matrix shape: \n", confu_matrix.shape)
     if confu_matrix.shape[-1] > 20:
         confu_matrix = confu_matrix[:20, :20]
         print("Confusion matrix is too large, only show the first 9x9 part")

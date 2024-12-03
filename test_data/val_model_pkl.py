@@ -98,31 +98,41 @@ def eval_model(model, val_data, save_path=None, output_size: int = 7):
     for i, val_i_data in tqdm.tqdm(enumerate(val_data), desc="evaluating"):
         feature, label = val_i_data
         y_predict = model.predict(feature)
-        y_predicts.append(y_predict)
+        # get class of predict
+        y_predict_label = np.argmax(y_predict, axis=-1)
+        y_predict_onehot = np.eye(y_predict.shape[-1])[y_predict_label]
+        y_predicts.append(y_predict_onehot)
+
         labels.append(label)
         features.append(feature)
         onehot_label = np.argmax(label, axis=-1)
         print(f"i:{i}; predict shape: {y_predict.shape}, feature shape: {feature.shape}, label shape: {label.shape}  "
               f"onehot_label: {onehot_label.flatten()[:10]}")
-        # if i > 10:
-        #     break
+        if i > 3:
+            break
     y_predicts = np.concatenate(y_predicts, axis=0)
     labels = np.concatenate(labels, axis=0)
     features = np.concatenate(features, axis=0)
     y_catagories = np.argmax(labels, axis=-1)
     y_df = pd.DataFrame(y_catagories.flatten())
-
+    #
     # save numpy result
     if save_path is not None:
-        np.savez(os.path.join(save_path, "tiberius_predict_pkl_result.npy"),
+        np.savez(os.path.join(save_path, "tiberius_predict_pkl_result"),
                  labels=labels, predicts=y_predicts, features=features)
+    # data = np.load(os.path.join(save_path, "tiberius_predict_pkl_result.npz"))
+    # labels = data["labels"]
+    # y_predicts = data["predicts"]
     if y_predicts.shape[-1] > output_size:
+        logging.info(f"reduce predicts from {y_predicts.shape[-1]} to {output_size}")
         y_predicts = tiberius_reduce_labels(y_predicts, output_size)
     if labels.shape[-1] > output_size:
+        logging.info(f"reduce labels from {labels.shape[-1]} to {output_size}")
         labels = tiberius_reduce_labels(labels, output_size)
 
     print(f"label distribution each class: {y_df.value_counts()}")
     print(f"predicts shape: {y_predicts.shape}; label shape: {labels.shape}; catagories: {np.unique(y_catagories)}")
+    print(f"predicts shape: {y_predicts.shape}; label shape: {labels.shape}")
 
     cal_metric(labels, y_predicts)
 
@@ -225,7 +235,7 @@ def main_eval_model_pkl(args):
         args.model,
         custom_objects=custom_objects
     )
-    eval_model(model, val_data, save_path=args.save_path, output_size=7)
+    eval_model(model, val_data, save_path=f"{args.save_path}", output_size=7)
 
 
 def main():
