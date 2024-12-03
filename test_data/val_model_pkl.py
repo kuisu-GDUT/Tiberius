@@ -108,8 +108,8 @@ def eval_model(model, val_data, save_path=None, output_size: int = 7):
         onehot_label = np.argmax(label, axis=-1)
         print(f"i:{i}; predict shape: {y_predict.shape}, feature shape: {feature.shape}, label shape: {label.shape}  "
               f"onehot_label: {onehot_label.flatten()[:10]}")
-        if i > 3:
-            break
+        # if i > 3:
+        #     break
     y_predicts = np.concatenate(y_predicts, axis=0)
     labels = np.concatenate(labels, axis=0)
     features = np.concatenate(features, axis=0)

@@ -583,7 +583,7 @@ def main():
     # init tfrecord generator
     generator = load_t2t_data(
         dest_path=args.data,
-        dataset_name="homo_sapiens_tiberius_20K",
+        dataset_name=args.train_species_file,
         split="train",
         batch_size=batch_size,
     )
@@ -591,8 +591,8 @@ def main():
     val_data = None
     if args.val_data and os.path.exists(args.val_data):
         val_data = load_t2t_data(
-            dest_path=args.val_data,
-            dataset_name="homo_sapiens_tiberius_20K",
+            dest_path=args.data,
+            dataset_name=args.val_data,
             batch_size=batch_size,
             split="val"
         )
