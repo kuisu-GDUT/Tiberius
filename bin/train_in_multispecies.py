@@ -11,10 +11,14 @@
 import glob
 import logging
 
+import pandas as pd
+import tqdm
+
 import parse_args
 from sklearn.metrics import matthews_corrcoef, f1_score, accuracy_score, recall_score, precision_score, confusion_matrix
 # from bend_dataset import BendDataset, pytorch_to_tensorflow_dataset
-from t2t_pkl_dataset import T2TTiberiusDataset, LABEL_NUM, pytorch_to_tensorflow_dataset
+from t2t_pkl_dataset import T2TTiberiusDataset, LABEL_NUM, pytorch_to_tensorflow_dataset, T2TTiberiusTfrecordDataset
+from utils import tiberius_reduce_labels
 
 args = parse_args.parseCmd()
 import sys, os, re, json, sys, csv
@@ -389,7 +393,7 @@ def train_lstm_model(generator, model_save_dir, config, val_data=None, model_loa
             # status = ckpt.restore(model_load + '/variables/variables').expect_partial()
             # print(f"status: {status}")
             model.load_weights(model_load + '/variables/variables')
-            eval_val_data(model, val_data)
+            eval_model_val_data(model, val_data, output_size=config["output_size"])
         if config["loss_weights"]:
             model.compile(
                 loss=cce_loss,
@@ -417,15 +421,50 @@ def train_lstm_model(generator, model_save_dir, config, val_data=None, model_loa
     return model
 
 
-def eval_val_data(model, val_data):
+def eval_model_val_data(model, val_data, save_path=None, output_size: int = 7):
+    logging.info("Evaluating model on validation data")
     labels = []
-    y_predicts = model.predict(val_data)
-    for val_i_data in val_data:
+    features = []
+    y_predicts = []
+    for i, val_i_data in tqdm.tqdm(enumerate(val_data), desc="evaluating"):
         feature, label = val_i_data
+        y_predict = model.predict(feature)
+        # get class of predict
+        y_predict_label = np.argmax(y_predict, axis=-1)
+        y_predict_onehot = np.eye(y_predict.shape[-1])[y_predict_label]
+        y_predicts.append(y_predict_onehot)
+
         labels.append(label)
-    y_predicts = np.asarray(y_predicts)
+        features.append(feature)
+        onehot_label = np.argmax(label, axis=-1)
+        print(f"i:{i}; predict shape: {y_predict.shape}, feature shape: {feature.shape}, label shape: {label.shape}  "
+              f"onehot_label: {onehot_label.flatten()[:10]}")
+        # if i > 3:
+        #     break
+    y_predicts = np.concatenate(y_predicts, axis=0)
     labels = np.concatenate(labels, axis=0)
-    print(f"predict shape: {y_predicts.shape}; labels shape: {labels.shape}")
+    features = np.concatenate(features, axis=0)
+    y_catagories = np.argmax(labels, axis=-1)
+    y_df = pd.DataFrame(y_catagories.flatten())
+    #
+    # save numpy result
+    if save_path is not None:
+        np.savez(os.path.join(save_path, "tiberius_predict_pkl_result"),
+                 labels=labels, predicts=y_predicts, features=features)
+    # data = np.load(os.path.join(save_path, "tiberius_predict_pkl_result.npz"))
+    # labels = data["labels"]
+    # y_predicts = data["predicts"]
+    if y_predicts.shape[-1] > output_size:
+        logging.info(f"reduce predicts from {y_predicts.shape[-1]} to {output_size}")
+        y_predicts = tiberius_reduce_labels(y_predicts, output_size)
+    if labels.shape[-1] > output_size:
+        logging.info(f"reduce labels from {labels.shape[-1]} to {output_size}")
+        labels = tiberius_reduce_labels(labels, output_size)
+
+    print(f"label distribution each class: {y_df.value_counts()}")
+    print(f"predicts shape: {y_predicts.shape}; label shape: {labels.shape}; catagories: {np.unique(y_catagories)}")
+    print(f"predicts shape: {y_predicts.shape}; label shape: {labels.shape}")
+
     cal_metric(labels, y_predicts)
 
 
@@ -490,6 +529,20 @@ def load_t2t_data(dest_path=None, batch_size=4, max_length=9999, dataset_name="g
     bend_dataset = bend_dataset.batch(batch_size).prefetch(tf.data.AUTOTUNE)
     return bend_dataset
 
+
+def load_t2t_data_pkl(dest_path=None, batch_size=4, max_length=9999, dataset_name="gene_finding", split="train"):
+    # load bend data
+    t2t_dataset = T2TTiberiusTfrecordDataset(
+        dest_path=dest_path,
+        split=split,
+        dataset_name=dataset_name,
+        max_length=max_length,
+        read_strand=False,
+    )
+    print(f"{dataset_name} - {split} nums: {len(t2t_dataset)}")
+    bend_dataset = pytorch_to_tensorflow_dataset(t2t_dataset)
+    bend_dataset = bend_dataset.batch(batch_size).prefetch(tf.data.AUTOTUNE)
+    return bend_dataset
 
 def main():
     logging.info(f"args: {args}")
@@ -582,7 +635,7 @@ def main():
         json.dump(config_dict, f)
 
     # init tfrecord generator
-    generator = load_t2t_data(
+    generator = load_t2t_data_pkl(
         dest_path=args.data,
         dataset_name=args.dataset_name,
         split=args.train_species_file,
@@ -590,8 +643,8 @@ def main():
     )
 
     val_data = None
-    if args.val_data and os.path.exists(args.val_data):
-        val_data = load_t2t_data(
+    if args.val_data:
+        val_data = load_t2t_data_pkl(
             dest_path=args.data,
             dataset_name=args.dataset_name,
             batch_size=batch_size,
@@ -635,7 +688,11 @@ def main():
         )
 
     if val_data is not None:
-        eval_val_data(model, val_data)
+        eval_model_val_data(
+            model,
+            val_data,
+            save_path=config_dict["model_save_dir"],
+            output_size=config_dict["output_size"])
 
 
 if __name__ == '__main__':

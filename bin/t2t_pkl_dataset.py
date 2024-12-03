@@ -120,7 +120,10 @@ class T2TTiberiusTfrecordDataset(T2TTiberiusDataset):
         # TODO down sample with 0.5%
         assert "seq" in data, f"seq not in data: {data.keys()}"
         seq = data["seq"]
-        label = data["annotation"]
+        if "anno" in data:
+            label = data["anno"].toarray()
+        else:
+            label = data["annotation"]
         assert len(seq) == label.shape[0], f"seq len: {len(seq)}, label len: {label.shape[0]}"
 
         if len(seq) > self.max_length:

@@ -6,6 +6,7 @@ cd $TIBERIUS_ROOT
 python bin/train_in_multispecies.py \
   --data /home/share/huadjyin/home/s_sukui/02_data/07_genomics_data/multi_species/intergenic \
   --dataset_name homo_sapiens_tiberius_pkls_from_tfrecord_10K \
-  --out ./outputs/train_human_tfrecord_7class_10k \
-  --learnMSA . \
-  --val_data /home/share/huadjyin/home/s_sukui/02_data/07_genomics_data/multi_species/intergenic
+  --train_species_file test \
+  --val_data val \
+  --out ./outputs/gorilla_15class_20k \
+  --learnMSA .
