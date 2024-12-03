@@ -90,36 +90,7 @@ def load_t2t_data_tfrecord(dest_path, batch_size=4, max_length=9999, dataset_nam
     return val_data
 
 
-def eval_model_pkl(model, val_data, save_path=None, output_size: int = 7):
-    logging.info("Evaluating model on validation data")
-    labels = []
-    features = []
-    predicts = []
-    # val_tmp_data = iter(val_data.dataset)
-    for val_i_data in tqdm(val_data, desc="evaluating"):
-        feature, label = val_i_data
-        labels.append(label)
-        features.append(feature)
-        y_predicts = model.predict(feature)
-        predicts.append(y_predicts)
-        if len(predicts) > 3:
-            print(f"predict shape: {y_predicts.shape}; labels shape: {label.shape}")
-    # val_tmp_data = iter(val_data.dataset)
-    y_predicts = np.concatenate(predicts, axis=0)
-    labels = np.concatenate(labels, axis=0)
-    # save numpy result
-    if save_path is not None:
-        np.savez(os.path.join(save_path, "tiberius_predict_pkl_result.npy"),
-                 labels=labels, predicts=y_predicts, features=features)
-    if y_predicts.shape[-1] > output_size:
-        y_predicts = tiberius_reduce_labels(y_predicts, output_size)
-    if labels.shape[-1] > output_size:
-        labels = tiberius_reduce_labels(labels, output_size)
-    print(f"predict shape: {y_predicts.shape}; labels shape: {labels.shape}")
-    cal_metric(labels, y_predicts)
-
-
-def eval_model_tfrecord(model, val_data, save_path=None, output_size: int = 7):
+def eval_model(model, val_data, save_path=None, output_size: int = 7):
     logging.info("Evaluating model on validation data")
     labels = []
     features = []
@@ -132,9 +103,10 @@ def eval_model_tfrecord(model, val_data, save_path=None, output_size: int = 7):
         features.append(feature)
         onehot_label = np.argmax(labels, axis=-1)
         print(
-            f"i:{i}; predict shape: {y_predict.shape}, feature shape: {feature.shape}  label: {onehot_label.flatten()[:10]}")
-        if i > 10:
-            break
+            f"i:{i}; predict shape: {y_predict.shape}, feature shape: {feature.shape}, label shape: {label.shape}  "
+            f"onehot_label: {onehot_label.flatten()[:10]}")
+        # if i > 10:
+        #     break
     y_predicts = np.concatenate(y_predicts, axis=0)
     labels = np.concatenate(labels, axis=0)
     features = np.concatenate(features, axis=0)
@@ -226,7 +198,7 @@ def main_eval_model_tfrecord(args):
     )
     # result = model.evaluate(x=val_data[0], y=val_data[1], batch_size=args.batch_size, verbose=1)
     # print(';'.join(model.metrics_names), '\n', ';'.join(list(map(str, result))))
-    eval_model_tfrecord(model, val_data)
+    eval_model(model, val_data)
 
 
 def main_eval_model_pkl(args):
@@ -254,7 +226,7 @@ def main_eval_model_pkl(args):
         args.model,
         custom_objects=custom_objects
     )
-    eval_model_tfrecord(model, val_data)
+    eval_model(model, val_data)
 
 
 def main():
@@ -286,7 +258,7 @@ def main():
         args.model,
         custom_objects=custom_objects
     )
-    eval_model_tfrecord(model, val_data)
+    eval_model(model, val_data)
 
 
 def parseCmd():
