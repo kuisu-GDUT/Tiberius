@@ -66,7 +66,7 @@ def load_t2t_data_pkl(dest_path=None, batch_size=4, max_length=9999, dataset_nam
     return bend_dataset
 
 
-def load_t2t_data_tfrecord(dest_path, batch_size=4, max_length=9999, dataset_name="gene_finding", split="train"):
+def load_t2t_data_tfrecord(dest_path, batch_size=4, output_size=7):
     val_species = "val_species_filtered.txt"
     val_species = read_species(f'{dest_path}/{val_species}')
     test_file_path = []
@@ -84,7 +84,7 @@ def load_t2t_data_tfrecord(dest_path, batch_size=4, max_length=9999, dataset_nam
         shuffle=False,
         repeat=False,
         # max_nums=1000,
-        output_size=7,
+        output_size=output_size,
         hmm_factor=0,
     )
     return val_data
@@ -101,10 +101,9 @@ def eval_model(model, val_data, save_path=None, output_size: int = 7):
         y_predicts.append(y_predict)
         labels.append(label)
         features.append(feature)
-        onehot_label = np.argmax(labels, axis=-1)
-        print(
-            f"i:{i}; predict shape: {y_predict.shape}, feature shape: {feature.shape}, label shape: {label.shape}  "
-            f"onehot_label: {onehot_label.flatten()[:10]}")
+        onehot_label = np.argmax(label, axis=-1)
+        print(f"i:{i}; predict shape: {y_predict.shape}, feature shape: {feature.shape}, label shape: {label.shape}  "
+              f"onehot_label: {onehot_label.flatten()[:10]}")
         # if i > 10:
         #     break
     y_predicts = np.concatenate(y_predicts, axis=0)
@@ -226,7 +225,7 @@ def main_eval_model_pkl(args):
         args.model,
         custom_objects=custom_objects
     )
-    eval_model(model, val_data)
+    eval_model(model, val_data, save_path=args.save_path, output_size=7)
 
 
 def main():
