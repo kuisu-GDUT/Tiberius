@@ -492,6 +492,7 @@ def load_t2t_data(dest_path=None, batch_size=4, max_length=9999, dataset_name="g
 
 
 def main():
+    logging.info(f"args: {args}")
     # currently only w_size=9999 is used
     w_size = 9999
     if w_size == 99999:
@@ -583,8 +584,8 @@ def main():
     # init tfrecord generator
     generator = load_t2t_data(
         dest_path=args.data,
-        dataset_name=args.train_species_file,
-        split="train",
+        dataset_name=args.dataset_name,
+        split=args.train_species_file,
         batch_size=batch_size,
     )
 
@@ -592,9 +593,9 @@ def main():
     if args.val_data and os.path.exists(args.val_data):
         val_data = load_t2t_data(
             dest_path=args.data,
-            dataset_name=args.val_data,
+            dataset_name=args.dataset_name,
             batch_size=batch_size,
-            split="val"
+            split=args.val_data
         )
 
     if args.hmm:
