@@ -15,7 +15,7 @@ import tqdm
 import numpy as np
 from data_generator import DataGenerator
 # from gene_pred_hmm import enePredHMMLayer
-from t2t_pkl_dataset import T2TTiberiusDataset,T2TTiberiusTfrecordDataset, pytorch_to_tensorflow_dataset
+from t2t_pkl_dataset import T2TTiberiusDataset, T2TTiberiusTfrecordDataset, pytorch_to_tensorflow_dataset
 from transformers import AutoTokenizer, TFAutoModelForMaskedLM, TFEsmForMaskedLM
 from models import custom_cce_f1_loss
 from utils import cal_metric, tiberius_reduce_labels
@@ -90,7 +90,7 @@ def load_t2t_data_tfrecord(dest_path, batch_size=4, max_length=9999, dataset_nam
     return val_data
 
 
-def eval_mode_pkl(model, val_data):
+def eval_model_pkl(model, val_data, save_path=None, output_size: int = 7):
     logging.info("Evaluating model on validation data")
     labels = []
     features = []
@@ -102,37 +102,57 @@ def eval_mode_pkl(model, val_data):
         features.append(feature)
         y_predicts = model.predict(feature)
         predicts.append(y_predicts)
+        if len(predicts) > 3:
+            print(f"predict shape: {y_predicts.shape}; labels shape: {label.shape}")
     # val_tmp_data = iter(val_data.dataset)
     y_predicts = np.concatenate(predicts, axis=0)
     labels = np.concatenate(labels, axis=0)
-
-    y_predicts = tiberius_reduce_labels(y_predicts, val_data[1].shape[-1])
+    # save numpy result
+    if save_path is not None:
+        np.savez(os.path.join(save_path, "tiberius_predict_pkl_result.npy"),
+                 labels=labels, predicts=y_predicts, features=features)
+    if y_predicts.shape[-1] > output_size:
+        y_predicts = tiberius_reduce_labels(y_predicts, output_size)
+    if labels.shape[-1] > output_size:
+        labels = tiberius_reduce_labels(labels, output_size)
     print(f"predict shape: {y_predicts.shape}; labels shape: {labels.shape}")
     cal_metric(labels, y_predicts)
 
 
-def eval_model_tfrecord(model, val_data):
+def eval_model_tfrecord(model, val_data, save_path=None, output_size: int = 7):
     logging.info("Evaluating model on validation data")
     labels = []
+    features = []
     y_predicts = []
     for i, val_i_data in tqdm.tqdm(enumerate(val_data), desc="evaluating"):
         feature, label = val_i_data
         y_predict = model.predict(feature)
         y_predicts.append(y_predict)
         labels.append(label)
+        features.append(feature)
         onehot_label = np.argmax(labels, axis=-1)
-        print(f"i:{i}; predict shape: {y_predict.shape}, feature shape: {feature.shape}  label: {onehot_label.flatten()[:10]}")
-        if i > 50:
+        print(
+            f"i:{i}; predict shape: {y_predict.shape}, feature shape: {feature.shape}  label: {onehot_label.flatten()[:10]}")
+        if i > 10:
             break
     y_predicts = np.concatenate(y_predicts, axis=0)
     labels = np.concatenate(labels, axis=0)
-
+    features = np.concatenate(features, axis=0)
     y_catagories = np.argmax(labels, axis=-1)
     y_df = pd.DataFrame(y_catagories.flatten())
-    print(f"label distribution each class: {y_df.value_counts()}")
-    print(f"y_predicts shape: {y_predicts.shape}; data_y shape: {labels.shape}; y_catagories: {np.unique(y_catagories)}")
 
-    print(f"predict shape: {y_predicts.shape}; labels shape: {labels.shape}")
+    # save numpy result
+    if save_path is not None:
+        np.savez(os.path.join(save_path, "tiberius_predict_pkl_result.npy"),
+                 labels=labels, predicts=y_predicts, features=features)
+    if y_predicts.shape[-1] > output_size:
+        y_predicts = tiberius_reduce_labels(y_predicts, output_size)
+    if labels.shape[-1] > output_size:
+        labels = tiberius_reduce_labels(labels, output_size)
+
+    print(f"label distribution each class: {y_df.value_counts()}")
+    print(f"predicts shape: {y_predicts.shape}; label shape: {labels.shape}; catagories: {np.unique(y_catagories)}")
+
     cal_metric(labels, y_predicts)
 
 
@@ -190,7 +210,7 @@ def main_eval_model_tfrecord(args):
         dest_path=args.val_data_path,
         batch_size=args.batch_size,
         dataset_name="homo_sapiens_tiberius_20K",
-        split="train"
+        split="cal"
     )
     custom_objects = {}
     f1_factor = 2
@@ -218,7 +238,7 @@ def main_eval_model_pkl(args):
     val_data = load_t2t_data_pkl(
         dest_path=args.val_data_path,
         batch_size=args.batch_size,
-        dataset_name="homo_sapiens_tiberius_tfrecord_10K",
+        dataset_name=args.val_data_name,
         split="val"
     )
 
@@ -236,13 +256,17 @@ def main_eval_model_pkl(args):
     )
     eval_model_tfrecord(model, val_data)
 
+
 def main():
     args = parseCmd()
     print(args)
     sys.path.insert(0, args.learnMSA)
     # val_data_path = f'/home/gabriell/deepl_data/tfrecords/data/99999_hmm/val/validation_lstm.npz'
     val_data_path = args.val_data_path
-    os.path.exists(val_data_path)
+    assert os.path.exists(val_data_path), f"{val_data_path} does not exist"
+    assert os.path.exists(args.model), f"{args.model} does not exist"
+    assert os.path.exists(args.save_path), f"{args.save_path} does not exist"
+
     val_data = load_t2t_data_pkl(
         dest_path=args.val_data_path,
         batch_size=1,
@@ -277,6 +301,10 @@ def parseCmd():
     parser.add_argument('--model', required=True, type=str,
                         help='')
     parser.add_argument('--val_data_path', type=str, required=True, default='.',
+                        help='')
+    parser.add_argument('--val_data_name', type=str, required=True, default='.',
+                        help='')
+    parser.add_argument('--save_path', type=str, required=True, default='.',
                         help='')
     parser.add_argument('--batch_size', type=int,
                         help='')

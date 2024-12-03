@@ -129,7 +129,7 @@ class T2TTiberiusTfrecordDataset(T2TTiberiusDataset):
             label = label[start_idx:end_idx]
         # else:
         #     logging.warning(f"seq len: {len(seq)}, max_length: {self.max_length}")
-        input_ids = seq
+        input_ids = self.tokenizer(seq)
         input_ids = np.array(input_ids, dtype=np.int64)
 
         # reduce label
