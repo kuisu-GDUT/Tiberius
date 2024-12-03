@@ -448,9 +448,9 @@ def eval_model_val_data(model, val_data, save_path=None, output_size: int = 7):
     y_df = pd.DataFrame(y_catagories.flatten())
     #
     # save numpy result
-    if save_path is not None:
-        np.savez(os.path.join(save_path, "tiberius_predict_pkl_result"),
-                 labels=labels, predicts=y_predicts, features=features)
+    # if save_path is not None:
+    #     np.savez(os.path.join(save_path, "tiberius_predict_pkl_result"),
+    #              labels=labels, predicts=y_predicts, features=features)
     # data = np.load(os.path.join(save_path, "tiberius_predict_pkl_result.npz"))
     # labels = data["labels"]
     # y_predicts = data["predicts"]
@@ -530,7 +530,15 @@ def load_t2t_data(dest_path=None, batch_size=4, max_length=9999, dataset_name="g
     return bend_dataset
 
 
-def load_t2t_data_pkl(dest_path=None, batch_size=4, max_length=9999, dataset_name="gene_finding", split="train"):
+def load_t2t_data_pkl(
+        dest_path=None,
+        batch_size=4,
+        max_length=9999,
+        dataset_name="gene_finding",
+        split="train",
+        shuffle=False,
+        repeat=False,
+):
     # load bend data
     t2t_dataset = T2TTiberiusTfrecordDataset(
         dest_path=dest_path,
@@ -540,9 +548,17 @@ def load_t2t_data_pkl(dest_path=None, batch_size=4, max_length=9999, dataset_nam
         read_strand=False,
     )
     print(f"{dataset_name} - {split} nums: {len(t2t_dataset)}")
-    bend_dataset = pytorch_to_tensorflow_dataset(t2t_dataset)
-    bend_dataset = bend_dataset.batch(batch_size).prefetch(tf.data.AUTOTUNE)
-    return bend_dataset
+    t2t_dataset = pytorch_to_tensorflow_dataset(t2t_dataset)
+
+    if shuffle:
+        t2t_dataset = t2t_dataset.shuffle(buffer_size=50)
+
+    if repeat:
+        t2t_dataset = t2t_dataset.repeat()
+
+    t2t_dataset = t2t_dataset.batch(batch_size).prefetch(tf.data.AUTOTUNE)
+    t2t_dataset = t2t_dataset.repeat()
+    return t2t_dataset
 
 def main():
     logging.info(f"args: {args}")
@@ -555,7 +571,7 @@ def main():
         batch_size = 28
         batch_save_numb = 100000
     elif w_size == 9999:
-        batch_size = 16
+        batch_size = 32
         batch_save_numb = 1000
     elif w_size == 29997:
         batch_size = 120 * 4
@@ -640,6 +656,8 @@ def main():
         dataset_name=args.dataset_name,
         split=args.train_species_file,
         batch_size=batch_size,
+        shuffle=True,
+        repeat=True
     )
 
     val_data = None
@@ -648,7 +666,9 @@ def main():
             dest_path=args.data,
             dataset_name=args.dataset_name,
             batch_size=batch_size,
-            split=args.val_data
+            split=args.val_data,
+            shuffle=False,
+            repeat=False
         )
 
     if args.hmm:
