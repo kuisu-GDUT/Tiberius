@@ -121,9 +121,11 @@ class T2TTiberiusTfrecordDataset(T2TTiberiusDataset):
         assert "seq" in data, f"seq not in data: {data.keys()}"
         seq = data["seq"]
         if "anno" in data:
-            label = data["anno"].toarray()
+            label = data["anno"]
         else:
             label = data["annotation"]
+        if getattr(label, "toarray", None) is not None:
+            label = label.toarray()
         assert len(seq) == label.shape[0], f"seq len: {len(seq)}, label len: {label.shape[0]}"
 
         if len(seq) > self.max_length:
