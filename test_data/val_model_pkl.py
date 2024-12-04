@@ -227,7 +227,7 @@ def main_eval_model_pkl(args):
     # val_data_path = f'/home/gabriell/deepl_data/tfrecords/data/99999_hmm/val/validation_lstm.npz'
     val_data_path = args.val_data_path
     os.path.exists(val_data_path)
-    assert args.max_length // 9 == 0, f"{args.max_length} //9 != 0"
+    assert args.max_length % 9 == 0, f"{args.max_length} //9 != 0"
     val_data = load_t2t_data_pkl(
         dest_path=args.val_data_path,
         batch_size=args.batch_size,
