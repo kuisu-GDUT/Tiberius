@@ -126,7 +126,6 @@ class T2TTiberiusTfrecordDataset(T2TTiberiusDataset):
             label = data["annotation"]
         if getattr(label, "toarray", None) is not None:
             label = label.toarray()
-        print(f"label shape: {label.shape}")
         assert len(seq) == label.shape[0], f"seq len: {len(seq)}, label len: {label.shape[0]}"
 
         if len(seq) > self.max_length:
