@@ -119,7 +119,7 @@ def eval_model(model, val_data, save_path=None, output_size: int = 7, save_prefi
     #
     # save numpy result
     if save_path is not None:
-        output_label = tiberius_reduce_labels(labels, output_size=3)
+        output_predict_label = tiberius_reduce_labels(y_predicts, output_size=3)
         save_name = f"{save_prefix}_tiberius_predict_pkl_result"
         np.savez(os.path.join(save_path, save_name),
                  labels=labels, predicts=y_predicts, features=features)
@@ -127,7 +127,7 @@ def eval_model(model, val_data, save_path=None, output_size: int = 7, save_prefi
             "labels": labels,
             "predicts": y_predicts,
             "features": features,
-            "logits": output_label
+            "logits": output_predict_label
         }
         with open(os.path.join(save_path, f"{save_name}.pkl"), "wb") as f:
             pickle.dump(result, f)
@@ -231,7 +231,8 @@ def main_eval_model_pkl(args):
         dest_path=args.val_data_path,
         batch_size=args.batch_size,
         dataset_name=args.val_data_name,
-        split="val"
+        split="val",
+        max_length=19998
     )
 
     custom_objects = {}

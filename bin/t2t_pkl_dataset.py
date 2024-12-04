@@ -73,7 +73,7 @@ class T2TTiberiusDataset(Dataset):
         assert len(seq) == label.shape[0], f"seq len: {len(seq)}, label len: {label.shape[0]}"
 
         if len(seq) > self.max_length:
-            start_idx, end_idx = random_sample_seq(seq, self.max_length)
+            start_idx, end_idx = random_sample_seq(seq, self.max_length, times=9)
             seq = seq[start_idx:end_idx]
             label = label[start_idx:end_idx]
         else:
@@ -115,20 +115,19 @@ class T2TTiberiusDataset(Dataset):
 
 class T2TTiberiusTfrecordDataset(T2TTiberiusDataset):
     def __getitem__(self, idx):
-        print(self.sequences[idx])
         with open(self.sequences[idx], "rb") as f:
             data = pickle.load(f)
         # TODO down sample with 0.5%
         assert "seq" in data, f"seq not in data: {data.keys()}"
-        seq = data["seq"][0]
+        seq = data["seq"]
         if "anno" in data:
             label = data["anno"].toarray()
         else:
-            label = np.zeros((len(seq), 15), dtype=np.int64)
+            label = data["annotation"]
         assert len(seq) == label.shape[0], f"seq len: {len(seq)}, label len: {label.shape[0]}"
 
         if len(seq) > self.max_length:
-            start_idx, end_idx = random_sample_seq(seq, self.max_length)
+            start_idx, end_idx = random_sample_seq(seq, self.max_length, times=9)
             seq = seq[start_idx:end_idx]
             label = label[start_idx:end_idx]
         # else:
