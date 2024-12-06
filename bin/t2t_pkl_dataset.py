@@ -178,4 +178,3 @@ if __name__ == '__main__':
     features, labels = first_batch
     print(features.shape, labels.shape)
 
-# find . -name 'Homo_sapiens_chr*' -print0 | xargs -0 -I {} mv {} ~/02_data/07_genomics_data/Tiberius/pkls/Homo_sapiens/

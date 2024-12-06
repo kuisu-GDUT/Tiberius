@@ -418,7 +418,7 @@ def write_species_data_hmm(
         # seq_names = fasta.sequence_names
         f_chunk = fasta.get_flat_chunks(strand='+', sequence_name=seq_names, pad=False)
         print("fasta strand (+) shape:", f_chunk.shape)
-        start_positive_strand = f_chunk.shape[1]
+        # start_positive_strand = f_chunk.shape[1]
         full_f_chunks = np.concatenate(
             (f_chunk,
              f_chunk[::-1, ::-1, [3, 2, 1, 0, 4, 5]]),

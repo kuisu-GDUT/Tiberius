@@ -117,7 +117,7 @@ def custom_cce_f1_loss(f1_factor, batch_size,
         any_positives = tf.cast(possible_positives > 0, possible_positives.dtype)
 
         precision = true_positives / (predicted_positives + K.epsilon())
-        recall = true_positives  / (possible_positives + K.epsilon())
+        recall = true_positives / (possible_positives + K.epsilon())
 
         # For the examples with positive class, maximize the F1 score
         f1_score = 2 * (precision * recall) / (precision + recall + K.epsilon()) #f1 score per sequence
