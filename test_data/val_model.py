@@ -89,6 +89,7 @@ def main():
         args.model,
         custom_objects=custom_objects
     )
+    model.summary()
     # result = model.evaluate(x=val_data[0], y=val_data[1], batch_size=args.batch_size, verbose=1)
     # print(';'.join(model.metrics_names), '\n', ';'.join(list(map(str, result))))
     y_predicts = model.predict(val_data[0], batch_size=args.batch_size, verbose=1)

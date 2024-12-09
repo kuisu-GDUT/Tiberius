@@ -216,6 +216,7 @@ def main_eval_model_tfrecord(args):
         args.model,
         custom_objects=custom_objects
     )
+    model.summary()
     # result = model.evaluate(x=val_data[0], y=val_data[1], batch_size=args.batch_size, verbose=1)
     # print(';'.join(model.metrics_names), '\n', ';'.join(list(map(str, result))))
     eval_model(model, val_data)
