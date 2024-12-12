@@ -234,9 +234,9 @@ def write_pkl(fasta, ref, out, split=1, ref_phase=None, trans=False, clamsa=np.a
 
     print(f"clamsa.shape {clamsa.shape}, fasta shape: {fasta.shape}, ref shape: {ref.shape}, trans: {trans}")
     for idx, (seq, label) in tqdm.tqdm(enumerate(zip(fasta, ref)), desc='Writing pkl files', total=len(fasta)):
-        start_idx = idx * seq_len + 1
+        start_idx = idx * seq_len  # NOTE, idex start 1 in CHR
         data = {
-            "input_id": csr_matrix(seq),
+            # "input_id": csr_matrix(seq),
             "seq": decode_sequence(seq),
             "annotation": csr_matrix(label),
             "strand": strand,
@@ -451,6 +451,9 @@ def write_species_data_hmm(
                     write_pkl(full_f_chunks, full_r_chunks, out_seq_name, split=split, strand=strand)
                 else:
                     write_tf_record(full_f_chunks, full_r_chunks, out_seq_name, split=split)
+
+            del full_f_chunks
+            del full_r_chunks
 
 
 def main():
