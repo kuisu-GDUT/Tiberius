@@ -230,8 +230,6 @@ def write_numpy(fasta, ref, out, ref_phase=None, split=100, trans=False, clamsa=
 
 
 def write_pkl(fasta, ref, out, split=1, ref_phase=None, trans=False, clamsa=np.array([]), strand="+-"):
-    fasta = fasta.astype(np.int32)
-    ref = ref.astype(np.int32)
     seq_len = fasta.shape[1]
 
     print(f"clamsa.shape {clamsa.shape}, fasta shape: {fasta.shape}, ref shape: {ref.shape}, trans: {trans}")

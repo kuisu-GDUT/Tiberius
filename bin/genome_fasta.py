@@ -212,7 +212,7 @@ class GenomeSequences:
                 padding[0:last_chunksize] = sequence[-last_chunksize:]
                 chunks_one_hot.append(padding)
 
-        chunks_one_hot = np.array(chunks_one_hot)
+        chunks_one_hot = np.array(chunks_one_hot, dtype=np.uint8)
         if strand == '-':
             chunks_one_hot = chunks_one_hot[::-1, ::-1, [3, 2, 1, 0, 4, 5]]
             chunk_coords.reverse()

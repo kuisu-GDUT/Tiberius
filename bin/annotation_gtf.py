@@ -198,7 +198,7 @@ class GeneStructure:
                                                            i * (self.chunksize - self.overlap) + self.chunksize, :] \
                             for i in range(num_chunks - 1)]
 
-        self.chunks = np.array(self.chunks)
+        self.chunks = np.array(self.chunks, dtype=np.int8)
         if strand == '-':
             self.chunks = self.chunks[::-1, ::-1, :]
             chunk_coords.reverse()
