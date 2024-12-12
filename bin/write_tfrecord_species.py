@@ -405,7 +405,7 @@ def write_species_data_hmm(
     for seq_name in tqdm.tqdm(fasta.sequence_names, desc="Writing species data"):
         for strand in ['+', '-']:
             seq_len = len(fasta.sequences[fasta.sequence_names.index(seq_name)])
-            print(f"process seq: {seq_name}, len:{seq_len}")
+            print(f"process seq: {seq_name}, len:{seq_len}, srand: {strand}")
             seq_lens = [seq_len]
             seq_names = [seq_name]
             out_seq_name = f"{out_name}_{seq_name}"
