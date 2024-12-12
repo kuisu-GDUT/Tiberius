@@ -3,6 +3,7 @@ import sys, json, os, re, sys, csv, argparse
 from typing import Optional
 
 import tqdm
+from scipy.sparse import csr_matrix
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 from transformers import AutoTokenizer, TFAutoModelForMaskedLM, TFEsmForMaskedLM
@@ -228,23 +229,18 @@ def write_numpy(fasta, ref, out, ref_phase=None, split=100, trans=False, clamsa=
                      array2=ref[indices[k::split], :, :], )
 
 
-def write_pkl(fasta, ref, out, split=1, ref_phase=None, trans=False, clamsa=np.array([])):
+def write_pkl(fasta, ref, out, split=1, ref_phase=None, trans=False, clamsa=np.array([]), strand="+-"):
     fasta = fasta.astype(np.int32)
     ref = ref.astype(np.int32)
     seq_len = fasta.shape[1]
 
     print(f"clamsa.shape {clamsa.shape}, fasta shape: {fasta.shape}, ref shape: {ref.shape}, trans: {trans}")
     for idx, (seq, label) in tqdm.tqdm(enumerate(zip(fasta, ref)), desc='Writing pkl files', total=len(fasta)):
-        if idx < seq_len // 2:
-            strand = "+"
-            start_idx = idx * seq_len + 1
-        else:
-            strand = "-"
-            start_idx = (idx - seq_len // 2) * seq_len + 1
+        start_idx = idx * seq_len + 1
         data = {
-            "input_id": seq,
+            "input_id": csr_matrix(seq),
             "seq": decode_sequence(seq),
-            "annotation": label,
+            "annotation": csr_matrix(label),
             "strand": strand,
             "start_idx": start_idx,
             "end_idx": start_idx + seq_len,
@@ -407,55 +403,56 @@ def write_species_data_hmm(
         overlap=overlap_size
     )
     for seq_name in tqdm.tqdm(fasta.sequence_names, desc="Writing species data"):
-        seq_len = len(fasta.sequences[fasta.sequence_names.index(seq_name)])
-        print(f"process seq: {seq_name}, len:{seq_len}")
-        seq_lens = [seq_len]
-        seq_names = [seq_name]
-        out_seq_name = f"{out_name}_{seq_name}"
+        for strand in ['+', '-']:
+            seq_len = len(fasta.sequences[fasta.sequence_names.index(seq_name)])
+            print(f"process seq: {seq_name}, len:{seq_len}")
+            seq_lens = [seq_len]
+            seq_names = [seq_name]
+            out_seq_name = f"{out_name}_{seq_name}"
 
-        fasta.encode_sequences(seq=[seq_name])
-        # seqs = [len(s) for s in fasta.sequences]
-        # seq_names = fasta.sequence_names
-        f_chunk = fasta.get_flat_chunks(strand='+', sequence_name=seq_names, pad=False)
-        print("fasta strand (+) shape:", f_chunk.shape)
-        # start_positive_strand = f_chunk.shape[1]
-        full_f_chunks = np.concatenate(
-            (f_chunk,
-             f_chunk[::-1, ::-1, [3, 2, 1, 0, 4, 5]]),
-            axis=0)
+            fasta.encode_sequences(seq=[seq_name])
+            # seqs = [len(s) for s in fasta.sequences]
+            # seq_names = fasta.sequence_names
+            full_f_chunks = fasta.get_flat_chunks(strand=strand, sequence_name=seq_names, pad=False)
+            # start_positive_strand = f_chunk.shape[1]
+            # full_f_chunks = np.concatenate(
+            #     (f_chunk,
+            #      f_chunk[::-1, ::-1, [3, 2, 1, 0, 4, 5]]),
+            #     axis=0)
 
-        del f_chunk
-        # del fasta
-        print(full_f_chunks.shape)
+            # del f_chunk
+            # del fasta
+            # print(full_f_chunks.shape)
 
-        ref_anno.translate_to_one_hot_hmm(
-            seq_names,
-            seq_lens,
-            transition=transition)
+            ref_anno.translate_to_one_hot_hmm(
+                seq_names,
+                seq_lens,
+                transition=transition)
+            full_r_chunks = ref_anno.get_flat_chunks_hmm(seq_names, strand=strand)
+            print(f"strand {strand}. fasta shape: {full_f_chunks.shape}. ref shape: {full_r_chunks.shape}", )
+            # full_r_chunks = np.concatenate(
+            #     (ref_anno.get_flat_chunks_hmm(seq_names, strand='+'), ref_anno.get_flat_chunks_hmm(seq_names, strand='-')),
+            #     axis=0)
 
-        full_r_chunks = np.concatenate(
-            (ref_anno.get_flat_chunks_hmm(seq_names, strand='+'), ref_anno.get_flat_chunks_hmm(seq_names, strand='-')),
-            axis=0)
-
-        if args.transformer:
-            write_tf_record(full_f_chunks, full_r_chunks, out_seq_name, trans=True, split=split)
-        if args.clamsa:
-            # clamsa = get_clamsa_track('/home/gabriell/deepl_data/clamsa/wig/', seq_len=args.wsize, prefix=args.species)
-            clamsa = load_clamsa_data(args.clamsa, seq_names=args.seq_names, seq_len=args.wsize)
-            print('Loaded CLAMSA')
-            if args.np:
-                write_numpy(full_f_chunks, full_r_chunks, out_seq_name, clamsa=clamsa, split=split)
+            if args.transformer:
+                write_tf_record(full_f_chunks, full_r_chunks, out_seq_name, trans=True, split=split)
+            if args.clamsa:
+                # clamsa = get_clamsa_track('/home/gabriell/deepl_data/clamsa/wig/', seq_len=args.wsize, prefix=args.species)
+                clamsa = load_clamsa_data(args.clamsa, seq_names=args.seq_names, seq_len=args.wsize)
+                print('Loaded CLAMSA')
+                if args.np:
+                    write_numpy(full_f_chunks, full_r_chunks, out_seq_name, clamsa=clamsa, split=split)
+                else:
+                    write_tf_record(full_f_chunks, full_r_chunks, out_seq_name, clamsa=clamsa, split=split)
             else:
-                write_tf_record(full_f_chunks, full_r_chunks, out_seq_name, clamsa=clamsa, split=split)
-        else:
-            if args.h5:
-                write_h5(full_f_chunks, full_r_chunks, out_seq_name, split=split)
-            elif args.np:
-                write_numpy(full_f_chunks, full_r_chunks, out_seq_name, split=split)
-            elif args.pkl:
-                write_pkl(full_f_chunks, full_r_chunks, out_seq_name, split=split)
-            else:
-                write_tf_record(full_f_chunks, full_r_chunks, out_seq_name, split=split)
+                if args.h5:
+                    write_h5(full_f_chunks, full_r_chunks, out_seq_name, split=split)
+                elif args.np:
+                    write_numpy(full_f_chunks, full_r_chunks, out_seq_name, split=split)
+                elif args.pkl:
+                    write_pkl(full_f_chunks, full_r_chunks, out_seq_name, split=split, strand=strand)
+                else:
+                    write_tf_record(full_f_chunks, full_r_chunks, out_seq_name, split=split)
 
 
 def main():
