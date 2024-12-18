@@ -108,9 +108,9 @@ class GeneStructure:
             for seq in sequence_names:
                 self.one_hot[strand][seq][:, 0] = 1  # mean default intergenic region
                 if seq in self.chr_names:
-                    print(f'Chromosome {seq} has gene structures.')
+                    print(f'Chromosome strand {strand} {seq} has gene structures.')
                 else:
-                    print(f'Chromosome {seq} has No gene structures.')
+                    print(f'Chromosome strand {strand} {seq} has No gene structures.')
 
         # Set the one-hot encoded positions for each gene structure
         for chromosome, feature, strand, phase, start, end in self.gene_structures:
