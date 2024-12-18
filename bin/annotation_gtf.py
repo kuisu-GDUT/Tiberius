@@ -27,6 +27,7 @@ class GeneStructure:
         self.overlap = overlap
 
         self.gene_structures = []
+        self.chr_names = []
 
         # one hot encoding for each sequence (intergenic [0], intron [2], CDS [1])
         self.one_hot = None
@@ -57,19 +58,22 @@ class GeneStructure:
                 line_parts = line.strip().split('\t')
 
                 # Extract the gene structure information
-                chromosome = line_parts[0].split(".")[0]  # NC_000067.7 -> NC_000067
+                chromosome = line_parts[0]
                 feature = line_parts[2]
                 strand = line_parts[6]
                 phase = line_parts[7]
 
                 start = int(line_parts[3])
                 end = int(line_parts[4])
+                if chromosome not in self.chr_names:
+                    self.chr_names.append(chromosome)
 
                 # Store the gene structure information
                 self.gene_structures.append((chromosome, feature, strand, phase, start, end))
 
         # Sort the gene structures by chromosome and end position
         self.gene_structures.sort(key=lambda x: (x[0], x[5]))
+        print(f'Number of chr name: {len(self.chr_names)}\n{self.chr_names[:5]}', )
 
     def save_to_file(self, filename):
         """Save one-hot encoding to a numpy file.
@@ -103,6 +107,10 @@ class GeneStructure:
                                     for seq, seq_l in zip(sequence_names, sequence_lengths)}
             for seq in sequence_names:
                 self.one_hot[strand][seq][:, 0] = 1  # mean default intergenic region
+                if seq in self.chr_names:
+                    print(f'Chromosome {seq} has gene structures.')
+                else:
+                    print(f'Chromosome {seq} has No gene structures.')
 
         # Set the one-hot encoded positions for each gene structure
         for chromosome, feature, strand, phase, start, end in self.gene_structures:

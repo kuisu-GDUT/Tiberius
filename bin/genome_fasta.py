@@ -65,8 +65,7 @@ class GenomeSequences:
                         # elif idx == 24:
                         #     idx = "Y"
                         ## NC_000067.7 -> NC_000067
-                        print(f"seq_name: {seq_name} into {seq_name.split('.')[0]}")
-                        seq_name = seq_name.split(".")[0]
+                        seq_name = seq_name
                     else:
                         chr_flag = False
                     if chr_flag:
