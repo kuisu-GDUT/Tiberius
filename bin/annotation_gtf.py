@@ -57,7 +57,7 @@ class GeneStructure:
                 line_parts = line.strip().split('\t')
 
                 # Extract the gene structure information
-                chromosome = line_parts[0]
+                chromosome = line_parts[0].split(".")[0]  # NC_000067.7 -> NC_000067
                 feature = line_parts[2]
                 strand = line_parts[6]
                 phase = line_parts[7]

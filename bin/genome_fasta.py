@@ -56,15 +56,17 @@ class GenomeSequences:
             for line in lines:
                 if line.startswith(">"):
                     seq_name = line[1:].strip().split(" ")[0].strip()
-                    if seq_name.startswith("NC_0000"):
+                    if seq_name.startswith("NC_"):  # only support NC_ chromosome
                         chr_flag = True
-                        idx = seq_name.split(".")[0][-2:]
-                        idx = int(idx)
-                        if idx == 23:
-                            idx = "X"
-                        elif idx == 24:
-                            idx = "Y"
-                        seq_name = f"chr{idx}"
+                        # idx = seq_name.split(".")[0][-2:]
+                        # idx = int(idx)
+                        # if idx == 23:
+                        #     idx = "X"
+                        # elif idx == 24:
+                        #     idx = "Y"
+                        ## NC_000067.7 -> NC_000067
+                        logging.info(f"seq_name: {seq_name} into {seq_name.split('.')[0]}")
+                        seq_name = seq_name.split(".")[0]
                     else:
                         chr_flag = False
                     if chr_flag:

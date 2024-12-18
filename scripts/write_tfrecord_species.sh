@@ -3,9 +3,9 @@ TIBERIUS_ROOT=/home/share/huadjyin/home/s_sukui/03_project/01_GeneLLM/Tiberius
 
 cd $TIBERIUS_ROOT
 python bin/write_tfrecord_species.py \
-  --gtf ./test_data/annot_longest_fixed_paper/Homo_sapiens.gtf \
-  --fasta ./test_data/annot_longest_fixed_paper/Homo_sapiens_GCF_000001405.40_GRCh38.p14_genomic.fna \
-  --wsize 19998 \
-  --out /home/share/huadjyin/home/s_sukui/02_data/07_genomics_data/Tiberius/pkls/Homo_sapiens_hmm_100K/Homo_sapiens_hmm \
+  --gtf /home/share/huadjyin/home/yinpeng/sukui_data/gene_structure/Species/Mus_musculus/Mus_musculus.longest.tiberius.gtf \
+  --fasta /home/share/huadjyin/home/yinpeng/sukui_data/gene_structure/Species/Mus_musculus/GCF_000001635.26_GRCm38.p6_genomic.fna \
+  --wsize 9999 \
+  --out /home/share/huadjyin/home/yinpeng/sukui_data/gene_structure/Tiberius/pkls/Mus_musculus_custom_hmm_10K/Mus_musculus_hmm \
   --transition \
   --pkl
