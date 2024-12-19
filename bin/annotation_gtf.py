@@ -87,11 +87,23 @@ class GeneStructure:
         """Load one-hot encoding from a numpy file."""
         self.one_hot = np.load(self.np_file)
 
-    def translate_to_one_hot_hmm(self, sequence_names: list, sequence_lengths: list, transition=False):
+    @staticmethod
+    def get_ele_start_end(start, end, ele_overlap, seq_len):
+        ele_len = end - start
+        if ele_overlap <= 1:
+            ele_overlap = int(ele_len * ele_overlap)
+        ele_start = max(1, start - ele_overlap)
+        ele_end = min(seq_len, end + ele_overlap)
+        return ele_start, ele_end
+
+    def translate_to_one_hot_hmm(self, sequence_names: list, sequence_lengths: list, transition=False,
+                                 ele_mask: str = None, ele_overlap=0.5):
         """Translate gene structure information to one-hot encoding.
             7 classes IR, I0, I1, I2, E0, E1, E2; 15 classes Ir, I0, I1, I2, E0, E1, E2, START, EI0, EI1, EI2, IE0, IE1, IE2, STOP
 
         Arguments:
+            ele_overlap: overlap for element mask
+            ele_mask: CDS, intron
             sequence_names (list): Names of sequences.
             sequence_lengths (list): Lengths of sequences."""
 
@@ -103,10 +115,16 @@ class GeneStructure:
 
         # Initialize a numpy array to store the one-hot encoded positions
         for strand in ['+', '-']:
-            self.one_hot[strand] = {seq: np.zeros((seq_l, numb_labels), dtype=np.int8) \
-                                    for seq, seq_l in zip(sequence_names, sequence_lengths)}
-            for seq in sequence_names:
+            # self.one_hot[strand] = {seq: np.zeros((seq_l, numb_labels), dtype=np.int8) \
+            #                         for seq, seq_l in zip(sequence_names, sequence_lengths)}
+            for seq, seq_l in zip(sequence_names, sequence_lengths):
+                self.one_hot[strand][seq] = np.zeros((seq_l, numb_labels), dtype=np.int8)
+                self.one_hot[strand][f"{seq}_mask"] = np.zeros(seq_l, dtype=np.int8)
+
+                if ele_mask is None:
+                    self.one_hot[strand][f"{seq}_mask"][:] = 1
                 self.one_hot[strand][seq][:, 0] = 1  # mean default intergenic region
+
                 if seq in self.chr_names:
                     print(f'Chromosome strand {strand} {seq} has gene structures.')
                 else:
@@ -117,6 +135,10 @@ class GeneStructure:
             if feature == 'CDS' and chromosome in self.one_hot[strand]:
                 exon_start = (3 - int(phase)) % 3
                 self.one_hot[strand][chromosome][start - 1:end, 0] = 0  # genomics region.
+                if ele_mask == 'CDS':
+                    ele_start, ele_end = self.get_ele_start_end(start, end, ele_overlap,
+                                                                sequence_lengths[sequence_names.index(chromosome)])
+                    self.one_hot[strand][f'{chromosome}_mask'][ele_start:ele_end] = 1  # genomics region.
 
                 one_help = (np.linspace(0, end - start, end - start + 1) + exon_start) % 3
                 if strand == '-':
@@ -139,6 +161,10 @@ class GeneStructure:
                 #                 print(exon_strand)
                 self.one_hot[strand][chromosome][start - 1:end, 1 + exon_strand] = 1
                 self.one_hot[strand][chromosome][start - 1:end, 0] = 0
+                if ele_mask == 'intron':
+                    ele_start, ele_end = self.get_ele_start_end(start, end, ele_overlap,
+                                                                sequence_lengths[sequence_names.index(chromosome)])
+                    self.one_hot[strand][f'{chromosome}_mask'][ele_start:ele_end] = 1  # genomics region.
 
         if transition:
             def calculate_index(array, position, default, offset, condition):
@@ -214,7 +240,7 @@ class GeneStructure:
             return self.chunks, chunk_coords
         return self.chunks
 
-    def get_flat_chunks_hmm_sample(self, seq_names, strand='+', coords=False, element_name_mask=None):
+    def get_flat_chunks_hmm_sample(self, seq_names, strand='+', coords=False):
         """Get one-hot encoded chunks, chunks smaller than chunksize are removed.
 
         Arguments:
@@ -229,8 +255,8 @@ class GeneStructure:
         self.chunks = []
         chunk_coords = []
         for seq_name in seq_names:
-            if element_name_mask is not None and element_name_mask in self.one_hot[strand]:
-                mask_seq_name = f"{seq_name}_{element_name_mask}"
+            mask_seq_name = f"{seq_name}_mask"
+            if mask_seq_name in self.one_hot[strand]:
                 element_idx = np.where(self.one_hot[strand][mask_seq_name] == 1)[0]
                 if len(element_idx) == 0:
                     logging.info(f"No elements found in sequence{seq_name}")
