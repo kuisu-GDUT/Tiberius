@@ -47,46 +47,6 @@ def load_clamsa_data(clamsa_prefix, seq_names, seq_len=None):
     return np.concatenate([clamsa_chunks[::-1, ::-1, [1, 0, 3, 2]], clamsa_chunks], axis=0)
 
 
-def get_species_data_hmm(genome_path='', annot_path='', species='', seq_len=500004, overlap_size=0, transition=False):
-    if not genome_path:
-        genome_path = f'/home/gabriell/deepl_data/genomes/{species}.fa.combined.masked'
-    if not annot_path:
-        annot_path = f'/home/gabriell//deepl_data/annot_longest_fixed/{species}.gtf'
-
-    fasta = GenomeSequences(
-        fasta_file=genome_path,
-        chunksize=seq_len,
-        overlap=overlap_size
-    )
-    fasta.encode_sequences()
-    seqs = [len(s) for s in fasta.sequences]
-    seq_names = fasta.sequence_names
-    f_chunk = fasta.get_flat_chunks(strand='+', pad=False)
-    del fasta
-    print(f_chunk.shape)
-    full_f_chunks = np.concatenate((f_chunk,
-                                    f_chunk[::-1, ::-1, [3, 2, 1, 0, 4, 5]]),
-                                   axis=0)
-
-    del f_chunk
-    # del fasta
-    print(full_f_chunks.shape)
-    ref_anno = GeneStructure(annot_path,
-                             chunksize=seq_len,
-                             overlap=overlap_size)
-
-    ref_anno.translate_to_one_hot_hmm(seq_names,
-                                      seqs, transition=transition)
-    del ref_anno.gene_structures
-
-    full_r_chunks = np.concatenate((ref_anno.get_flat_chunks_hmm(seq_names, strand='+'),
-                                    ref_anno.get_flat_chunks_hmm(seq_names, strand='-')),
-                                   axis=0)
-    del ref_anno
-
-    return full_f_chunks, full_r_chunks
-
-
 def encode_sequence(sequence):
     table = np.zeros((256, 6), dtype=np.uint8)
     table[:, 4] = 1  # N is encoded as [0, 0, 0, 0, 1, 0]
@@ -137,7 +97,7 @@ def write_pkl(fasta, ref, out, split=1, ref_phase=None, trans=False, clamsa=np.a
             "start_idx": start_idx,
             "end_idx": start_idx + seq_len,
         }
-        with open(f'{out}_{strand}_{start_idx}-{start_idx + seq_len}.pkl', 'wb') as f:
+        with open(f'{out}_{strand}_{start_idx:09d}-{start_idx + seq_len:09d}.pkl', 'wb') as f:
             pickle.dump(data, f)
 
 

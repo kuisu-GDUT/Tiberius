@@ -277,10 +277,10 @@ class GeneStructure:
                 for i in range(num_chunks - 1):
                     start_idx = i * (self.chunksize - self.overlap)
                     end_idx = i * (self.chunksize - self.overlap) + self.chunksize
-                    chunk_coord += [
+                    chunk_coord.append([
                         seq_name, strand,
                         element_idx[start_idx] + 1,
-                        element_idx[end_idx]]
+                        element_idx[end_idx]])
                 chunk_coords += chunk_coord
 
             # self.chunks += [self.one_hot[strand][seq_name][i * (self.chunksize - self.overlap): \

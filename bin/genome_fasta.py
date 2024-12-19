@@ -251,10 +251,10 @@ class GenomeSequences:
                 _chunks_one_hot += [sequence[ele_idx, :]]
 
                 if coords:
-                    _chunk_coords += [
+                    _chunk_coords.append([
                         seq_name, strand,
                         ele_idx[0],
-                        ele_idx[-1]]
+                        ele_idx[-1]])
             chunks_one_hot += _chunks_one_hot
             chunk_coords += _chunk_coords
 
