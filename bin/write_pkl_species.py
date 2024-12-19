@@ -6,22 +6,12 @@ import tqdm
 from scipy.sparse import csr_matrix
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
-from transformers import AutoTokenizer, TFAutoModelForMaskedLM, TFEsmForMaskedLM
 from genome_fasta import GenomeSequences
 from annotation_gtf import GeneStructure
-import subprocess as sp
-import numpy as np
-import tensorflow as tf
 import numpy as np
 # import psutil
 import sys
-import zlib
-from copy import deepcopy
 from wig_class import Wig_util
-
-from concurrent.futures import ThreadPoolExecutor
-
-import h5py
 
 
 def get_clamsa_track(file_path, seq_len=500004, prefix=''):
@@ -151,9 +141,8 @@ def write_pkl(fasta, ref, out, split=1, ref_phase=None, trans=False, clamsa=np.a
 
 
 def write_species_data_hmm(
-        genome_path='',
-        annot_path='',
-        species='',
+        genome_path,
+        annot_path,
         seq_len=500004,
         overlap_size=0,
         transition=True,
@@ -161,11 +150,6 @@ def write_species_data_hmm(
         split=10,
         args: Optional[dict] = None
 ):
-    if not genome_path:
-        genome_path = f'/home/gabriell/deepl_data/genomes/{species}.fa.combined.masked'
-    if not annot_path:
-        annot_path = f'/home/gabriell/deepl_data/annot_longest_fixed/{species}.gtf'
-
     fasta = GenomeSequences(
         fasta_file=genome_path,
         chunksize=seq_len,
@@ -185,26 +169,26 @@ def write_species_data_hmm(
             out_seq_name = f"{out_name}_{seq_name}"
 
             fasta.encode_sequences(seq=[seq_name])
-            # seqs = [len(s) for s in fasta.sequences]
-            # seq_names = fasta.sequence_names
-            full_f_chunks = fasta.get_flat_chunks(strand=strand, sequence_name=seq_names, pad=False)
 
             ref_anno.translate_to_one_hot_hmm(
                 seq_names,
                 seq_lens,
-                transition=transition)
-            full_r_chunks = ref_anno.get_flat_chunks_hmm(seq_names, strand=strand)
+                transition=transition
+            )
+            full_r_chunks, coord, ele_mask = ref_anno.get_flat_chunks_hmm_sample(seq_names, strand=strand)
+            ref_anno.one_hot = None
+
+            full_f_chunks = fasta.get_flat_chunks_sample(sequence_name=seq_names, strand=strand, ele_mask=ele_mask)
             print(f"strand {strand}. fasta shape: {full_f_chunks.shape}. ref shape: {full_r_chunks.shape}", )
 
             if args.clamsa:
                 # clamsa = get_clamsa_track('/home/gabriell/deepl_data/clamsa/wig/', seq_len=args.wsize, prefix=args.species)
                 clamsa = load_clamsa_data(args.clamsa, seq_names=args.seq_names, seq_len=args.wsize)
                 print('Loaded CLAMSA')
+            if args.pkl:
+                write_pkl(full_f_chunks, full_r_chunks, out_seq_name, split=split, strand=strand)
             else:
-                if args.pkl:
-                    write_pkl(full_f_chunks, full_r_chunks, out_seq_name, split=split, strand=strand)
-                else:
-                    raise ValueError("No output format specified")
+                raise ValueError("No output format specified")
 
             del full_f_chunks
             del full_r_chunks
@@ -223,27 +207,6 @@ def main():
         out_name=args.out,
         args=args
     )  # NOTE: defalut transition=True
-
-    # print('Loaded FASTA and GTF', fasta.shape, ref.shape)
-    # if args.transformer:
-    #     #         trans_emb = get_transformer_emb(ref, token_len = args.wsize//18)
-    #     #         print('AAA')
-    #     write_tf_record(fasta, ref, args.out, trans=True)
-    # if args.clamsa:
-    #     # clamsa = get_clamsa_track('/home/gabriell/deepl_data/clamsa/wig/', seq_len=args.wsize, prefix=args.species)
-    #     clamsa = load_clamsa_data(args.clamsa, seq_names=args.seq_names, seq_len=args.wsize)
-    #     print('Loaded CLAMSA')
-    #     if args.np:
-    #         write_numpy(fasta, ref, args.out, clamsa=clamsa)
-    #     else:
-    #         write_tf_record(fasta, ref, args.out, clamsa=clamsa)
-    # else:
-    #     if args.h5:
-    #         write_h5(fasta, ref, args.out)
-    #     elif args.np:
-    #         write_numpy(fasta, ref, args.out)
-    #     else:
-    #         write_tf_record(fasta, ref, args.out)
 
 
 def parseCmd():
@@ -268,15 +231,9 @@ def parseCmd():
                         help='', required=True)
     parser.add_argument('--transition', action='store_true',
                         help='')
-    parser.add_argument('--transformer', action='store_true',
-                        help='')
     parser.add_argument('--clamsa', type=str, default='',
                         help='')
     parser.add_argument('--seq_names', type=str, default='',
-                        help='')
-    parser.add_argument('--h5', action='store_true',
-                        help='')
-    parser.add_argument('--np', action='store_true',
                         help='')
     parser.add_argument('--pkl', action='store_true',
                         help='')

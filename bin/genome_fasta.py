@@ -221,6 +221,54 @@ class GenomeSequences:
             return chunks_one_hot, chunk_coords
         return chunks_one_hot
 
+    def get_flat_chunks_sample(self, sequence_name: list, strand='+', ele_mask: list = None, coords=False):
+        """Get flattened chunks of a specific sequence by name.
+
+        Arguments:
+            coords: coords
+            ele_mask: ele mask
+            sequence_name (str): Name of the sequence to extract chunks from.
+            strand (char): Strand direction ('+' for forward, '-' for reverse).
+
+        Returns:
+            chunks_one_hot (np.array): Flattened chunks of the specified sequence.
+        """
+        if ele_mask is None:
+            ele_mask = [np.ones(len(self.one_hot_encoded[name])) for name in sequence_name]
+        logging.info(f"Getting chunks for {sequence_name}")
+        sequences_i = [self.one_hot_encoded[i] for i in sequence_name]
+
+        chunks_one_hot = []
+        chunk_coords = []
+        for seq_name, sequence, mask in zip(sequence_name, sequences_i, ele_mask):
+            element_idx = np.where(mask == 1)[0]
+            num_chunks = (len(element_idx) - self.overlap) // (self.chunksize - self.overlap)
+            _chunks_one_hot = []
+            _chunk_coords = []
+            for i in range(num_chunks):
+                ele_start = i * (self.chunksize - self.overlap)
+                ele_end = i * (self.chunksize - self.overlap) + self.chunksize
+                ele_idx = element_idx[ele_start:ele_end]
+                _chunks_one_hot += [sequence[ele_idx, :]]
+
+
+                if coords:
+                    _chunk_coords += [
+                        seq_name, strand,
+                        ele_idx[0],
+                        ele_idx[-1]]
+            chunks_one_hot += _chunks_one_hot
+            chunk_coords += _chunk_coords
+
+
+        chunks_one_hot = np.array(chunks_one_hot, dtype=np.uint8)
+        if strand == '-':
+            chunks_one_hot = chunks_one_hot[::-1, ::-1, [3, 2, 1, 0, 4, 5]]
+            chunk_coords.reverse()
+        if coords:
+            return chunks_one_hot, chunk_coords
+        return chunks_one_hot
+
     #     def get_flat_chunks_padding(self, strand='+'):
     #         """Get flattened chunks for all sequences. Padd all chunks to the same size.
     #         Chunks at the end of the sequence are padded with the end of the previous chunk.

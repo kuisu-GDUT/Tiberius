@@ -254,6 +254,8 @@ class GeneStructure:
         """
         self.chunks = []
         chunk_coords = []
+        ele_mask = []
+
         for seq_name in seq_names:
             mask_seq_name = f"{seq_name}_mask"
             if mask_seq_name in self.one_hot[strand]:
@@ -263,35 +265,39 @@ class GeneStructure:
                     continue
             else:
                 element_idx = np.arange(len(self.one_hot[strand][seq_name]))
+            ele_mask.append(element_idx)
             logging.info(f"Sequence {seq_name} has {len(element_idx)} elements")
             num_chunks = (len(element_idx) - self.overlap) // (self.chunksize - self.overlap) + 1
 
             if num_chunks - 1 == 0:
                 continue
             if coords:
+                chunk_coord = []
                 for i in range(num_chunks):
                     start_idx = i * (self.chunksize - self.overlap)
                     end_idx = i * (self.chunksize - self.overlap) + self.chunksize
-                    chunk_coords += [[
+                    chunk_coord += [
                         seq_name, strand,
                         element_idx[start_idx] + 1,
-                        element_idx[end_idx]]]
+                        element_idx[end_idx]]
+                chunk_coords += chunk_coord
 
             # self.chunks += [self.one_hot[strand][seq_name][i * (self.chunksize - self.overlap): \
             #                                                i * (self.chunksize - self.overlap) + self.chunksize, :] \
             #                 for i in range(num_chunks - 1)]
+            chunk = []
             for i in range(num_chunks - 1):
                 start_idx = i * (self.chunksize - self.overlap)
                 end_idx = i * (self.chunksize - self.overlap) + self.chunksize
-                self.chunks += self.one_hot[strand][seq_names][element_idx[start_idx:end_idx]]
+                _chunk = self.one_hot[strand][seq_names][element_idx[start_idx:end_idx]]
+                chunk.append(_chunk)
+            self.chunks += chunk
 
         self.chunks = np.array(self.chunks, dtype=np.int8)
         if strand == '-':
             self.chunks = self.chunks[::-1, ::-1, :]
             chunk_coords.reverse()
-        if coords:
-            return self.chunks, chunk_coords
-        return self.chunks
+        return self.chunks, chunk_coords, ele_mask
 
     def get_chunks_seq(self, seq_names, strand='+'):
         """Get all one-hot encoded chunks.
