@@ -56,7 +56,7 @@ class GenomeSequences:
             for line in lines:
                 if line.startswith(">"):
                     seq_name = line[1:].strip().split(" ")[0].strip()
-                    if seq_name.startswith("NC_"):  # only support NC_ chromosome
+                    if seq_name.startswith("NW_023337852"):  # only support NC_ chromosome
                         chr_flag = True
                         # idx = seq_name.split(".")[0][-2:]
                         # idx = int(idx)
@@ -241,16 +241,14 @@ class GenomeSequences:
         chunks_one_hot = []
         chunk_coords = []
         for seq_name, sequence, mask in zip(sequence_name, sequences_i, ele_mask):
-            element_idx = np.where(mask == 1)[0]
-            num_chunks = (len(element_idx) - self.overlap) // (self.chunksize - self.overlap)
+            num_chunks = (len(mask) - self.overlap) // (self.chunksize - self.overlap) + 1
             _chunks_one_hot = []
             _chunk_coords = []
-            for i in range(num_chunks):
+            for i in range(num_chunks - 1):
                 ele_start = i * (self.chunksize - self.overlap)
                 ele_end = i * (self.chunksize - self.overlap) + self.chunksize
-                ele_idx = element_idx[ele_start:ele_end]
+                ele_idx = mask[ele_start:ele_end]
                 _chunks_one_hot += [sequence[ele_idx, :]]
-
 
                 if coords:
                     _chunk_coords += [
@@ -260,14 +258,13 @@ class GenomeSequences:
             chunks_one_hot += _chunks_one_hot
             chunk_coords += _chunk_coords
 
-
         chunks_one_hot = np.array(chunks_one_hot, dtype=np.uint8)
         if strand == '-':
             chunks_one_hot = chunks_one_hot[::-1, ::-1, [3, 2, 1, 0, 4, 5]]
             chunk_coords.reverse()
         if coords:
             return chunks_one_hot, chunk_coords
-        return chunks_one_hot
+        return chunks_one_hot, chunk_coords
 
     #     def get_flat_chunks_padding(self, strand='+'):
     #         """Get flattened chunks for all sequences. Padd all chunks to the same size.

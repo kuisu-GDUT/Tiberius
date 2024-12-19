@@ -117,6 +117,7 @@ class GeneStructure:
         for strand in ['+', '-']:
             # self.one_hot[strand] = {seq: np.zeros((seq_l, numb_labels), dtype=np.int8) \
             #                         for seq, seq_l in zip(sequence_names, sequence_lengths)}
+            self.one_hot[strand] = {}
             for seq, seq_l in zip(sequence_names, sequence_lengths):
                 self.one_hot[strand][seq] = np.zeros((seq_l, numb_labels), dtype=np.int8)
                 self.one_hot[strand][f"{seq}_mask"] = np.zeros(seq_l, dtype=np.int8)
@@ -138,7 +139,7 @@ class GeneStructure:
                 if ele_mask == 'CDS':
                     ele_start, ele_end = self.get_ele_start_end(start, end, ele_overlap,
                                                                 sequence_lengths[sequence_names.index(chromosome)])
-                    self.one_hot[strand][f'{chromosome}_mask'][ele_start:ele_end] = 1  # genomics region.
+                    self.one_hot[strand][f'{chromosome}_mask'][ele_start - 1:ele_end] = 1  # genomics region.
 
                 one_help = (np.linspace(0, end - start, end - start + 1) + exon_start) % 3
                 if strand == '-':
@@ -164,7 +165,7 @@ class GeneStructure:
                 if ele_mask == 'intron':
                     ele_start, ele_end = self.get_ele_start_end(start, end, ele_overlap,
                                                                 sequence_lengths[sequence_names.index(chromosome)])
-                    self.one_hot[strand][f'{chromosome}_mask'][ele_start:ele_end] = 1  # genomics region.
+                    self.one_hot[strand][f'{chromosome}_mask'][ele_start - 1:ele_end] = 1  # genomics region.
 
         if transition:
             def calculate_index(array, position, default, offset, condition):
@@ -261,7 +262,7 @@ class GeneStructure:
             if mask_seq_name in self.one_hot[strand]:
                 element_idx = np.where(self.one_hot[strand][mask_seq_name] == 1)[0]
                 if len(element_idx) == 0:
-                    logging.info(f"No elements found in sequence{seq_name}")
+                    logging.info(f"No elements found in sequence {strand} {seq_name}")
                     continue
             else:
                 element_idx = np.arange(len(self.one_hot[strand][seq_name]))
@@ -273,7 +274,7 @@ class GeneStructure:
                 continue
             if coords:
                 chunk_coord = []
-                for i in range(num_chunks):
+                for i in range(num_chunks - 1):
                     start_idx = i * (self.chunksize - self.overlap)
                     end_idx = i * (self.chunksize - self.overlap) + self.chunksize
                     chunk_coord += [
@@ -289,7 +290,7 @@ class GeneStructure:
             for i in range(num_chunks - 1):
                 start_idx = i * (self.chunksize - self.overlap)
                 end_idx = i * (self.chunksize - self.overlap) + self.chunksize
-                _chunk = self.one_hot[strand][seq_names][element_idx[start_idx:end_idx]]
+                _chunk = self.one_hot[strand][seq_name][element_idx[start_idx:end_idx]]
                 chunk.append(_chunk)
             self.chunks += chunk
 

@@ -1,3 +1,4 @@
+import logging
 import pickle
 import sys, json, os, re, sys, csv, argparse
 from typing import Optional
@@ -173,12 +174,26 @@ def write_species_data_hmm(
             ref_anno.translate_to_one_hot_hmm(
                 seq_names,
                 seq_lens,
-                transition=transition
+                transition=transition,
+                ele_mask="CDS",
+                ele_overlap=0,
             )
-            full_r_chunks, coord, ele_mask = ref_anno.get_flat_chunks_hmm_sample(seq_names, strand=strand)
+            full_r_chunks, r_coord, ele_mask = ref_anno.get_flat_chunks_hmm_sample(
+                seq_names,
+                strand=strand,
+                coords=True
+            )
+            if len(ele_mask) == 0:
+                print(f"No data for {seq_name} strand {strand}")
+                continue
             ref_anno.one_hot = None
 
-            full_f_chunks = fasta.get_flat_chunks_sample(sequence_name=seq_names, strand=strand, ele_mask=ele_mask)
+            full_f_chunks, f_coord = fasta.get_flat_chunks_sample(
+                sequence_name=seq_names,
+                strand=strand,
+                ele_mask=ele_mask,
+                coords=True
+            )
             print(f"strand {strand}. fasta shape: {full_f_chunks.shape}. ref shape: {full_r_chunks.shape}", )
 
             if args.clamsa:
@@ -200,7 +215,6 @@ def main():
     write_species_data_hmm(
         genome_path=args.fasta,
         annot_path=args.gtf,
-        species=args.species,
         seq_len=args.wsize,
         overlap_size=0,
         transition=args.transition,
@@ -217,7 +231,7 @@ def parseCmd():
     """
     parser = argparse.ArgumentParser(description="""
     USAGE: write_tfrecord_species.py --gtf annot.gtf --fasta genome.fa --wsize 9999 --out tfrecords/speciesName
-    
+
     This script will write input and output data as 100 tfrecord files as tfrecords/speciesName_i.tfrecords""")
     parser.add_argument('--species', type=str, default='',
                         help='')
@@ -231,9 +245,15 @@ def parseCmd():
                         help='', required=True)
     parser.add_argument('--transition', action='store_true',
                         help='')
+    parser.add_argument('--transformer', action='store_true',
+                        help='')
     parser.add_argument('--clamsa', type=str, default='',
                         help='')
     parser.add_argument('--seq_names', type=str, default='',
+                        help='')
+    parser.add_argument('--h5', action='store_true',
+                        help='')
+    parser.add_argument('--np', action='store_true',
                         help='')
     parser.add_argument('--pkl', action='store_true',
                         help='')
@@ -242,4 +262,5 @@ def parseCmd():
 
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO)
     main()
