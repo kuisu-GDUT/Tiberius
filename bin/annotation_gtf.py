@@ -214,6 +214,59 @@ class GeneStructure:
             return self.chunks, chunk_coords
         return self.chunks
 
+    def get_flat_chunks_hmm_sample(self, seq_names, strand='+', coords=False, element_name_mask=None):
+        """Get one-hot encoded chunks, chunks smaller than chunksize are removed.
+
+        Arguments:
+            element_name_mask: mask for element name.
+            seq_names (list): Names of sequences to chunk.
+            strand (str): Strand to process ('+' or '-').
+            coords (bool): get coordinates of each chunk
+
+        Returns:
+            tuple: One hot encoded chunks of labels
+        """
+        self.chunks = []
+        chunk_coords = []
+        for seq_name in seq_names:
+            if element_name_mask is not None and element_name_mask in self.one_hot[strand]:
+                mask_seq_name = f"{seq_name}_{element_name_mask}"
+                element_idx = np.where(self.one_hot[strand][mask_seq_name] == 1)[0]
+                if len(element_idx) == 0:
+                    logging.info(f"No elements found in sequence{seq_name}")
+                    continue
+            else:
+                element_idx = np.arange(len(self.one_hot[strand][seq_name]))
+            logging.info(f"Sequence {seq_name} has {len(element_idx)} elements")
+            num_chunks = (len(element_idx) - self.overlap) // (self.chunksize - self.overlap) + 1
+
+            if num_chunks - 1 == 0:
+                continue
+            if coords:
+                for i in range(num_chunks):
+                    start_idx = i * (self.chunksize - self.overlap)
+                    end_idx = i * (self.chunksize - self.overlap) + self.chunksize
+                    chunk_coords += [[
+                        seq_name, strand,
+                        element_idx[start_idx] + 1,
+                        element_idx[end_idx]]]
+
+            # self.chunks += [self.one_hot[strand][seq_name][i * (self.chunksize - self.overlap): \
+            #                                                i * (self.chunksize - self.overlap) + self.chunksize, :] \
+            #                 for i in range(num_chunks - 1)]
+            for i in range(num_chunks - 1):
+                start_idx = i * (self.chunksize - self.overlap)
+                end_idx = i * (self.chunksize - self.overlap) + self.chunksize
+                self.chunks += self.one_hot[strand][seq_names][element_idx[start_idx:end_idx]]
+
+        self.chunks = np.array(self.chunks, dtype=np.int8)
+        if strand == '-':
+            self.chunks = self.chunks[::-1, ::-1, :]
+            chunk_coords.reverse()
+        if coords:
+            return self.chunks, chunk_coords
+        return self.chunks
+
     def get_chunks_seq(self, seq_names, strand='+'):
         """Get all one-hot encoded chunks.
 
