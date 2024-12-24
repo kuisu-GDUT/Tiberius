@@ -97,7 +97,7 @@ def parseCmd():
         dictionary: Dictionary with arguments
     """
     parser = argparse.ArgumentParser(description='Combine gene sets by choosing ' \
-                                                 'the isoform with the longes coding sequence for each gene locus.')
+                                                 'the isoform with the longest coding sequence for each gene locus.')
     parser.add_argument('-g', '--gtf', type=str, required=True,
                         help='List (separated by commas) of gene prediciton files in gtf.\n' \
                              + '(e.g. gene_pred1.gtf,gene_pred2.gtf,gene_pred3.gtf)')

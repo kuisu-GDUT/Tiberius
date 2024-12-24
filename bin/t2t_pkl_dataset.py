@@ -119,7 +119,7 @@ class T2TTiberiusTfrecordDataset(T2TTiberiusDataset):
             data = pickle.load(f)
         # TODO down sample with 0.5%
         assert "seq" in data, f"seq not in data: {data.keys()}"
-        seq = data["seq"]
+        seq = str(data["seq"])
         if "anno" in data:
             label = data["anno"]
         else:

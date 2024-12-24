@@ -109,6 +109,7 @@ def write_species_data_hmm(
         transition=True,
         out_name='',
         split=10,
+        ele_overlap: int = 1000,
         args: Optional[dict] = None
 ):
     fasta = GenomeSequences(
@@ -136,14 +137,14 @@ def write_species_data_hmm(
                 seq_lens,
                 transition=transition,
                 ele_mask="CDS",
-                ele_overlap=0,
+                ele_overlap=ele_overlap,
             )
             full_r_chunks, r_coord, ele_mask = ref_anno.get_flat_chunks_hmm_sample(
                 seq_names,
                 strand=strand,
                 coords=True
             )
-            if len(ele_mask) == 0:
+            if len(full_r_chunks) == 0:
                 print(f"No data for {seq_name} strand {strand}")
                 continue
             ref_anno.one_hot = None
@@ -179,6 +180,7 @@ def main():
         overlap_size=0,
         transition=args.transition,
         out_name=args.out,
+        ele_overlap=args.ele_overlap,
         args=args
     )  # NOTE: defalut transition=True
 
@@ -203,6 +205,8 @@ def parseCmd():
                         help='Prefix of output files')
     parser.add_argument('--wsize', type=int,
                         help='', required=True)
+    parser.add_argument('--ele_overlap', type=int,
+                        help='', default=1000)
     parser.add_argument('--transition', action='store_true',
                         help='')
     parser.add_argument('--transformer', action='store_true',

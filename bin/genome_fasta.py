@@ -56,7 +56,7 @@ class GenomeSequences:
             for line in lines:
                 if line.startswith(">"):
                     seq_name = line[1:].strip().split(" ")[0].strip()
-                    if seq_name.startswith("NW_023337852"):  # only support NC_ chromosome
+                    if seq_name.startswith("NC"):  # only support NC_ chromosome
                         chr_flag = True
                         # idx = seq_name.split(".")[0][-2:]
                         # idx = int(idx)
