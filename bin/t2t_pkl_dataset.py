@@ -132,6 +132,11 @@ class T2TTiberiusTfrecordDataset(T2TTiberiusDataset):
             start_idx, end_idx = random_sample_seq(seq, self.max_length, times=9)
             seq = seq[start_idx:end_idx]
             label = label[start_idx:end_idx]
+        else:
+            # pad_num = self.max_length - len(seq)
+            seq = PADDING_TOKEN * self.max_length
+            label = np.zeros(shape=(self.max_length, label.shape[1]), dtype=np.int64)
+            label[:, 0] = 1
         # else:
         #     logging.warning(f"seq len: {len(seq)}, max_length: {self.max_length}")
         input_ids = self.tokenizer(seq)
