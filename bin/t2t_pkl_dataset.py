@@ -72,7 +72,7 @@ class T2TTiberiusDataset(Dataset):
         label = data["anno"].toarray()
         assert len(seq) == label.shape[0], f"seq len: {len(seq)}, label len: {label.shape[0]}"
 
-        if len(seq) > self.max_length:
+        if len(seq) >= self.max_length:
             start_idx, end_idx = random_sample_seq(seq, self.max_length, times=9)
             seq = seq[start_idx:end_idx]
             label = label[start_idx:end_idx]
