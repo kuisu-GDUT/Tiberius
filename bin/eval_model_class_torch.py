@@ -25,11 +25,10 @@ from gene_pred_hmm import class3_emission_matrix, GenePredHMMLayer, make_5_class
 from learnMSA.msa_hmm.Initializers import ConstantInitializer
 from transformers import AutoTokenizer, TFAutoModelForMaskedLM, TFEsmForMaskedLM
 
-
 # from tensorflow.keras.layers import (Conv1D, SimpleRNN, Conv1DTranspose, LSTM, GRU, Dense, Bidirectional, Dropout, Activation, Input, BatchNormalization, LSTM, Reshape, Embedding, Add, LayerNormalization,
 #                                     AveragePooling1D)
 from model_packages.tiberius.modeling_tiberius import TiberiusMaskedLM
-from tokenizers.tokenization_tiberius import TiberiusTokenizer
+from tokenizer.tokenization_tiberius import TiberiusTokenizer
 
 
 class PredictionGTF:
@@ -128,6 +127,7 @@ class PredictionGTF:
 
         logging.info(f"Model loaded from {self.model_path}\n{print(self.lstm_model)}")
         self.make_default_hmm()
+
         # if self.hmm and self.model_path_lstm:
         #     # only the lstm model is provided, use the default HMM Layer
         #     if self.transformer or self.trans_lstm:
@@ -292,7 +292,7 @@ class PredictionGTF:
         if strand is None:
             strand = self.strand
 
-        fasta_object.encode_sequences(seq=seq_names)
+        fasta_object.encode_sequences(seq=seq_names) # OneHot
         f_chunk, coords = fasta_object.get_flat_chunks(strand=strand, coords=True,
                                                        sequence_name=seq_names)
         if not softmask:
@@ -412,6 +412,9 @@ class PredictionGTF:
 
     def tokenize_inp_torch(self, inp_chunks):
         """Tokenizes input sequences for torch model"""
+
+        # TODO: ValueError: type of None unknown: <class 'NoneType'>. Should be one of a python, numpy, pytorch or tensorflow object.
+        # 当前版本的transformer不支持, 后续在针对这个问题进行优化
         def decode_sequence(encoded_seq):
             index_to_nucleotide = np.array(['A', 'C', 'G', 'T', 'N', 'a', 'c', 'g', 't'])
             print(f"decode_sequence shape: {encoded_seq.shape}")
@@ -423,13 +426,18 @@ class PredictionGTF:
                 # padding 未处理
             decoded_seq = index_to_nucleotide[nucleotide_indices]
             print(f"decoded_seq shape: {decoded_seq.shape}")
-            decoded_seq_str = ''.join(decoded_seq)
+            if decoded_seq.ndim == 2:
+                decoded_seq_list = decoded_seq.tolist()
+                decoded_seq_str = [''.join(seq) for seq in decoded_seq_list]
+            else:
+                decoded_seq_str = [''.join(decoded_seq)]
             return decoded_seq_str
 
-        tokens = decode_sequence(inp_chunks[:, :, :5])
-        tokens = self.tokenizer.batch_encode_plus(tokens, return_tensors="tf",
-                                             padding="max_length",
-                                             )
+        tokens = decode_sequence(inp_chunks)
+        tokens = self.tokenizer.batch_encode_plus(tokens,
+                                                  padding="max_length",
+                                                  )
+        return tokens
 
     def tokenize_inp(self, inp_chunks):
         """Tokenizes input sequences for nucleotide transformer.
@@ -548,9 +556,9 @@ class PredictionGTF:
                 ])
             elif self.torch_model:
                 input_x = torch.Tensor(inp_chunks[start_pos:end_pos]).to(self.lstm_model.model.device)
-                input_x1 = torch.concat([input_x, input_x[:, :, :5]], axis=2)
-                loss, y = self.lstm_model(input_x1)
-                y = y.cpu().detach().numpy()
+                input_x1 = torch.concat([input_x, torch.zeros_like(input_x[:, :, :5])], axis=2)  # TODO, 临时适配
+                output = self.lstm_model(input_x1)
+                y = output.logits.cpu().detach().numpy()
             else:  # TODO: 这里可以添加torch的模型
                 y = self.lstm_model.predict_on_batch(inp_chunks[start_pos:end_pos])
             if not self.emb and len(y.shape) == 1:

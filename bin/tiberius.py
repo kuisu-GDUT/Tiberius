@@ -162,51 +162,51 @@ def main():
     tx_id=0
     
     tf.keras.utils.get_custom_objects()["weighted_cce_loss"] = make_weighted_cce_loss()
-    try:
-        for j, s_ in enumerate(strand):
-            pred_gtf = PredictionGTF(
-                model_path=model_path,
-                model_path_lstm=model_path_lstm,
-                model_path_hmm=model_path_hmm,
-                seq_len=seq_len,
-                batch_size=batch_size,
-                hmm=True,
-                temp_dir=None,
-                emb=args.emb,
-                num_hmm=1,
-                hmm_factor=1,
-                genome_path=genome_path,
-                softmask=not args.no_softmasking, strand=s_,
-                parallel_factor=args.parallel_factor,
-                # lstm_cfg=args.lstm_cfg,
-            )
+    # try:
+    for j, s_ in enumerate(strand):
+        pred_gtf = PredictionGTF(
+            model_path=model_path,
+            model_path_lstm=model_path_lstm,
+            model_path_hmm=model_path_hmm,
+            seq_len=seq_len,
+            batch_size=batch_size,
+            hmm=True,
+            temp_dir=None,
+            emb=args.emb,
+            num_hmm=1,
+            hmm_factor=1,
+            genome_path=genome_path,
+            softmask=not args.no_softmasking, strand=s_,
+            parallel_factor=args.parallel_factor,
+            # lstm_cfg=args.lstm_cfg,
+        )
 
-            pred_gtf.load_model(summary=j==0)
+        pred_gtf.load_model(summary=j==0)
 
-            genome_fasta = pred_gtf.init_fasta(genome_path=genome_path,
-                       chunk_len=seq_len)
+        genome_fasta = pred_gtf.init_fasta(genome_path=genome_path,
+                   chunk_len=seq_len)
 
-            seq_groups = group_sequences(genome_fasta.sequence_names,
-                                       [len(s) for s in genome_fasta.sequences],
-                                        t=50000400, chunk_size=seq_len)
+        seq_groups = group_sequences(genome_fasta.sequence_names,
+                                   [len(s) for s in genome_fasta.sequences],
+                                    t=50000400, chunk_size=seq_len)
 
-            for k, seq in enumerate(seq_groups):
-                logging.info(f'Tiberius gene prediciton {k+1+len(seq_groups)*j}/{len(strand)*len(seq_groups)} ')
-                x_data, coords = pred_gtf.load_genome_data(genome_fasta, seq,
-                                                           softmask=softmasking, strand=s_)
-                print(x_data.shape)
-                clamsa=None
-                if clamsa_prefix:
-                    clamsa = pred_gtf.load_clamsa_data(clamsa_prefix=clamsa_prefix, seq_names=seq,
-                                     strand=s_, chunk_len=seq_len, pad=True)
+        for k, seq in enumerate(seq_groups):
+            logging.info(f'Tiberius gene prediciton {k+1+len(seq_groups)*j}/{len(strand)*len(seq_groups)} ')
+            x_data, coords = pred_gtf.load_genome_data(genome_fasta, seq,
+                                                       softmask=softmasking, strand=s_)
+            print(x_data.shape)
+            clamsa=None
+            if clamsa_prefix:
+                clamsa = pred_gtf.load_clamsa_data(clamsa_prefix=clamsa_prefix, seq_names=seq,
+                                 strand=s_, chunk_len=seq_len, pad=True)
 
-                hmm_pred = pred_gtf.get_predictions(x_data, hmm_filter=True, clamsa_inp=clamsa)
-                anno, tx_id = pred_gtf.create_gtf(y_label=hmm_pred, coords=coords, f_chunks=x_data,
-                                    clamsa_inp=clamsa, strand=s_, anno=anno, tx_id=tx_id,
-                                    filt=False)
-    except Exception as e:
-        logging.warning(f'ERROR: {e}')
-        logging.info(f"starting to write the annotation to {gtf_out}")
+            hmm_pred = pred_gtf.get_predictions(x_data, hmm_filter=True, clamsa_inp=clamsa)
+            anno, tx_id = pred_gtf.create_gtf(y_label=hmm_pred, coords=coords, f_chunks=x_data,
+                                clamsa_inp=clamsa, strand=s_, anno=anno, tx_id=tx_id,
+                                filt=False)
+    # except Exception as e:
+    #     logging.warning(f'ERROR: {e}')
+    #     logging.info(f"starting to write the annotation to {gtf_out}")
         
     # Load the genome sequence from the FASTA file
     genome = SeqIO.to_dict(SeqIO.parse(genome_path, "fasta"))

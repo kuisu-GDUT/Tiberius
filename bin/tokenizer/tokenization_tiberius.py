@@ -53,7 +53,6 @@ class TiberiusTokenizer(PreTrainedTokenizer):
             unk_token=unk_token,
             pad_token=pad_token,
             mask_token=mask_token,
-            single_word=True,
             **kwargs,
         )
 
