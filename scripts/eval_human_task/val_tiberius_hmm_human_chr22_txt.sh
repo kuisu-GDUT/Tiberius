@@ -16,6 +16,10 @@ python test_data/val_model_chr_txt.py \
   --csv_path /home/share/huadjyin/home/s_sukui/03_project/01_GeneLLM/Tiberius/test_data/Homo_splice_seq_path_v2.csv \
   --save_path ./outputs/eval_two_step_tiberius
 
+
+python test_data/eval_tiberius_dir_pkls.py \
+  --num_classes 15 \
+  --pkl_dir ./outputs/eval_two_step_tiberius
 #python test_data/val_model_pkl.py \
 #  --model ./outputs/Human_15class_tfrecord/epoch_10 \
 #  --batch_size 10 \

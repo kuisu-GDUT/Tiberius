@@ -13,10 +13,12 @@ cd $TIBERIUS_ROOT
 #  --val_data_path /home/share/huadjyin/home/s_sukui/02_data/07_genomics_data/Tiberius/tfrecords/Homo_sapiens
 
 python test_data/val_model_pkl.py \
-  --model $WEIGHT_HUMAN_TFRecord_99 \
+  --model $WEIGHT_TIBERIUS \
   --batch_size 100 \
   --learnMSA . \
-  --val_data_path /home/share/huadjyin/home/s_sukui/02_data/07_genomics_data/Tiberius/tfrecords/Homo_sapiens
+  --save_path /home/share/huadjyin/home/s_sukui/03_project/01_GeneLLM/Tiberius/outputs/test_Danio_rerio \
+  --val_data_name Danio_rerio \
+  --val_data_path /home/share/huadjyin/home/s_sukui/02_data/07_genomics_data/gene_structure/model_species_10_with_fish_10K
 
 #python test_data/val_model_pkl.py \
 #  --model ./outputs/Human_15class_tfrecord/epoch_10 \

@@ -94,7 +94,7 @@ def load_t2t_data_chr_txt(fasta_root, label_root, csv_path, max_length=9999, sav
 
     df_csv["strand"] = strand
 
-    df_cds_csv = df_csv[(df_csv['y_pred'] == 1) & (df_csv['y_true'] == 1)]
+    df_cds_csv = df_csv[(df_csv['y_pred'] == 1) | (df_csv['y_true'] == 1)]
     df_cds_csv = df_cds_csv.sort_values(by=["chrom", "strand", "seq_start"])
     chr_names = set(df_cds_csv["chrom"].unique())
     strands = set(df_cds_csv["strand"].unique())
@@ -138,14 +138,15 @@ def load_t2t_data_chr_txt(fasta_root, label_root, csv_path, max_length=9999, sav
                     chr_end = chunk_info[3]
                     seq_predict = chunk_info[4]
                     name = f"{chr}_{strand}_{chr_start}_{chr_end}_{seq_predict}.pkl"
-                    if label.dim == 3:
+                    if len(label.shape) == 2:
                         output_label = np.argmax(label, axis=-1)
                     else:
                         output_label = label
 
+                    y_pred_tmp = np.zeros_like(output_label)
                     with open(os.path.join(save_path, name), 'wb') as f:
                         pred_result = {"chr": chr, "strand": strand, "start": chr_start, "end": chr_end,
-                                       "y_pred": np.zeros_like(output_label), "y_true": output_label}
+                                       "y_pred": y_pred_tmp, "y_true": output_label}
                         pickle.dump(pred_result, f)
                     continue
 
