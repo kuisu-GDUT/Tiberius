@@ -1,12 +1,14 @@
-export CUDA_VISIBLE_DEVICES=3
+export CUDA_VISIBLE_DEVICES=0
 TIBERIUS_ROOT=/home/share/huadjyin/home/s_sukui/03_project/01_GeneLLM/Tiberius
 
 cd $TIBERIUS_ROOT
-python bin/train_in_human.py \
-  --genome /home/share/huadjyin/home/s_sukui/03_project/01_GeneLLM/Tiberius/test_data/hg38_nop56.fasta \
-  --out /home/share/huadjyin/home/s_sukui/03_project/01_GeneLLM/Tiberius/output.gtf \
+#SPECIES_FASTA="/home/share/huadjyin/home/s_sukui/03_project/01_GeneLLM/Tiberius/test_data/hg38_nop56.fasta"
+SPECIES_FASTA="/home/share/huadjyin/home/yinpeng/sukui_data/gene_structure/Species/Danio_rerio/GCF_000002035.6_GRCz11_genomic.tmp.fna"
+python bin/tiberius.py \
+  --genome $SPECIES_FASTA \
+  --out /home/share/huadjyin/home/s_sukui/03_project/01_GeneLLM/Tiberius/danio_rerio_output.dsub.gtf \
   --model /home/share/huadjyin/home/s_sukui/03_project/01_GeneLLM/DNA_LLM/outputs/supervised/FishsTiberius7label_Combine_dataset_with_10_fish_tiberius_transformer \
   --learnMSA /home/share/huadjyin/home/s_sukui/03_project/01_GeneLLM/Tiberius/ \
-  --batch_size 2 \
+  --batch_size 24 \
   --seq_len 9999 \
   --parallel_factor 1

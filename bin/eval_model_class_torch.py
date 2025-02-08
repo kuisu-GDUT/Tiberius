@@ -9,6 +9,7 @@ import logging
 import sys, json, os, re, sys, csv, time
 
 import torch
+import tqdm
 
 from genome_fasta import GenomeSequences
 from annotation_gtf import GeneStructure
@@ -417,7 +418,6 @@ class PredictionGTF:
         # 当前版本的transformer不支持, 后续在针对这个问题进行优化
         def decode_sequence(encoded_seq):
             index_to_nucleotide = np.array(['A', 'C', 'G', 'T', 'N', 'a', 'c', 'g', 't'])
-            print(f"decode_sequence shape: {encoded_seq.shape}")
 
             nucleotide_indices = np.argmax(encoded_seq, axis=-1)
             if encoded_seq.shape[-1] == 6:
@@ -425,7 +425,6 @@ class PredictionGTF:
                 nucleotide_indices[soft_mask] += 5
                 # padding 未处理
             decoded_seq = index_to_nucleotide[nucleotide_indices]
-            print(f"decoded_seq shape: {decoded_seq.shape}")
             if decoded_seq.ndim == 2:
                 decoded_seq_list = decoded_seq.tolist()
                 decoded_seq_str = [''.join(seq) for seq in decoded_seq_list]
@@ -544,7 +543,7 @@ class PredictionGTF:
 
         if inp_chunks.shape[0] % batch_size > 0:
             num_batches += 1
-        for i in range(num_batches):
+        for i in tqdm.tqdm(range(num_batches), desc="LSTM prediction"):
             start_pos = i * batch_size
             end_pos = (i + 1) * batch_size
             if self.trans_lstm:
@@ -563,6 +562,7 @@ class PredictionGTF:
                 # input_x1 = torch.concat([input_x, torch.zeros_like(input_x[:, :, :5])], axis=2)  # TODO, 临时适配
                 output = self.lstm_model(input_x)
                 y = output.logits.cpu().detach().numpy()
+                torch.cuda.empty_cache()  # 释放torch的显存
             else:  # TODO: 这里可以添加torch的模型
                 y = self.lstm_model.predict_on_batch(inp_chunks[start_pos:end_pos])
             if not self.emb and len(y.shape) == 1:
@@ -682,6 +682,7 @@ class PredictionGTF:
 
             if len(batch_i) == batch_size * self.hmm_factor or i == inp_chunks.shape[0] - 1:
                 # print(i, '/', inp_chunks.shape[0], file=sys.stderr)
+                self.emb = False  # TODO: 临时设置
                 if self.emb:
                     y_hmm = self.predict_vit(inp_chunks[batch_i],
                                              [lstm_predictions[0][batch_i],
@@ -741,6 +742,7 @@ class PredictionGTF:
                                                        batch_size=batch_size)
 
         self.lstm_pred = encoding_layer_pred
+        torch.cuda.empty_cache()  # 释放torch的显存
         lstm_end = time.time()
         duration = lstm_end - start_time
         print(f"LSTM took {duration / 60} minutes to execute.")
