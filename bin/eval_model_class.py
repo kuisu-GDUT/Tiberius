@@ -5,7 +5,7 @@
 # 
 # Transformers 4.31.0
 # ==============================================================
-
+import logging
 import sys, json, os, re, sys, csv, time
 from genome_fasta import GenomeSequences
 from annotation_gtf import GeneStructure
@@ -672,7 +672,8 @@ class PredictionGTF:
         lstm_end = time.time()
         duration = lstm_end - start_time
         print(f"LSTM took {duration/60} minutes to execute.")
-        if not self.hmm:   
+        logging.info(f"LSTM took {duration/60} minutes to execute.")
+        if not self.hmm:
             encoding_layer_pred = np.argmax(encoding_layer_pred, axis=-1)
             return encoding_layer_pred
         
@@ -685,6 +686,7 @@ class PredictionGTF:
         hmm_end = time.time()
         duration = hmm_end - lstm_end
         print(f"HMM took {duration/60} minutes to execute.")
+        logging.info(f"HMM took {duration/60} minutes to execute.")
         return hmm_predictions
             
     def get_tp_fn_fp (self, predictions, true_labels):
