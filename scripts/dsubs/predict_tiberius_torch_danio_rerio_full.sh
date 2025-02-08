@@ -1,10 +1,10 @@
 #!/bin/bash
-#DSUB -n PredictTiberiusTorch
+#DSUB -n PREDICT_TIBERIUS_TORCH_DANIO_RERIO_FULL
 #DSUB -A root.project.P24Z10200N0983
 #DSUB -R 'cpu=64;gpu=1;mem=150000'
 #DSUB -N 1
-#DSUB -eo /home/share/huadjyin/home/s_sukui/03_project/01_GeneLLM/Tiberius/logs/PredictTiberiusTorch.%J.%I.err
-#DSUB -oo /home/share/huadjyin/home/s_sukui/03_project/01_GeneLLM/Tiberius/logs/PredictTiberiusTorch.%J.%I.out
+#DSUB -eo /home/share/huadjyin/home/s_sukui/03_project/01_GeneLLM/Tiberius/logs/PREDICT_TIBERIUS_TORCH_DANIO_RERIO_FULL.%J.%I.err
+#DSUB -oo /home/share/huadjyin/home/s_sukui/03_project/01_GeneLLM/Tiberius/logs/PREDICT_TIBERIUS_TORCH_DANIO_RERIO_FULL.%J.%I.out
 
 ### Load WC Env
 source /home/HPCBase/tools/module-5.2.0/init/profile.sh
@@ -30,7 +30,7 @@ export OMP_NUM_THREADS=1
 
 
 ## Set scripts
-RANK_SCRIPT="./scripts/predict_tiberius_torch.sh"
+RANK_SCRIPT="./scripts/predict_tiberius_torch_danio_rerio_full.sh"
 
 ###Set Start Path
 JOB_PATH="/home/share/huadjyin/home/s_sukui/03_project/01_GeneLLM/Tiberius"

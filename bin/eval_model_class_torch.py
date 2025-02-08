@@ -51,7 +51,7 @@ class PredictionGTF:
                  hmm_factor=None, transformer=False, trans_lstm=False,
                  annot_path='', genome_path='', softmask=True,
                  strand='+', parallel_factor=1, oracle=False,
-                 lstm_cfg='', ):
+                 lstm_cfg='', torch_model=True):
         """
         Arguments:
             - model_path (str): Path to the main model file that includes a HMM layer.
@@ -85,7 +85,7 @@ class PredictionGTF:
         self.transformer = transformer
         self.model = None
         self.model_path_lstm = model_path_lstm
-        self.torch_model = True
+        self.torch_model = torch_model
         self.model_path_hmm = model_path_hmm
         self.fasta_seq_lens = {}
         self.num_hmm = num_hmm

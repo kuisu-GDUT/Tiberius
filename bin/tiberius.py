@@ -200,6 +200,7 @@ def main():
             genome_path=genome_path,
             softmask=not args.no_softmasking, strand=s_,
             parallel_factor=args.parallel_factor,
+            torch_model=args.torch_model
             # lstm_cfg=args.lstm_cfg,
         )
 
@@ -334,6 +335,8 @@ def parseCmd():
     #     help='')
     parser.add_argument('--emb', action='store_true',
                         help='Indicates if the HMM layer uses embedding input. Currently not supported')
+    parser.add_argument('--torch_model', action='store_true',
+                        help='Use Torch Model to predict GTF of the genome.')
     parser.add_argument('--strand', type=str,
                         help='Either "+" or "-" or "+,-".', default='+,-')
     parser.add_argument('--seq_len', type=int,
