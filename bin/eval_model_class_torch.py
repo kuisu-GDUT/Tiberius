@@ -16,9 +16,9 @@ from annotation_gtf import GeneStructure
 import subprocess as sp
 import numpy as np
 import tensorflow as tf
-# import tensorflow.keras as keras
+import tensorflow.keras as keras
 from learnMSA.msa_hmm.Viterbi import viterbi
-# from tensorflow.keras.models import Model
+from tensorflow.keras.models import Model
 from genome_anno import Anno
 from models import custom_cce_f1_loss, lstm_model
 from gene_pred_hmm import class3_emission_matrix, GenePredHMMLayer, make_5_class_emission_kernel, \
@@ -26,8 +26,8 @@ from gene_pred_hmm import class3_emission_matrix, GenePredHMMLayer, make_5_class
 from learnMSA.msa_hmm.Initializers import ConstantInitializer
 from transformers import AutoTokenizer, TFAutoModelForMaskedLM, TFEsmForMaskedLM
 
-# from tensorflow.keras.layers import (Conv1D, SimpleRNN, Conv1DTranspose, LSTM, GRU, Dense, Bidirectional, Dropout, Activation, Input, BatchNormalization, LSTM, Reshape, Embedding, Add, LayerNormalization,
-#                                     AveragePooling1D)
+from tensorflow.keras.layers import (Conv1D, SimpleRNN, Conv1DTranspose, LSTM, GRU, Dense, Bidirectional, Dropout, Activation, Input, BatchNormalization, LSTM, Reshape, Embedding, Add, LayerNormalization,
+                                    AveragePooling1D)
 from model_packages.tiberius.modeling_tiberius import TiberiusMaskedLM
 from tokenizer.tokenization_tiberius import TiberiusTokenizer
 
@@ -120,124 +120,125 @@ class PredictionGTF:
         Args:
             summary (bool, optional): If True, prints the model summary. Defaults to True.
         """
-        self.lstm_model = TiberiusMaskedLM.from_pretrained(self.model_path)
-        self.lstm_model.eval()
-        self.lstm_model = self.lstm_model.to('cuda:0')
+        if self.torch_model and os.path.exists(self.model_path):
+            self.lstm_model = TiberiusMaskedLM.from_pretrained(self.model_path)
+            self.lstm_model.eval()
+            self.lstm_model = self.lstm_model.to('cuda:0')
 
-        self.tokenizer = TiberiusTokenizer.from_pretrained(self.model_path)
+            self.tokenizer = TiberiusTokenizer.from_pretrained(self.model_path)
 
-        logging.info(f"Model loaded from {self.model_path}\n{print(self.lstm_model)}")
-        self.make_default_hmm()
+            logging.info(f"Model loaded from {self.model_path}\n{print(self.lstm_model)}")
+            self.make_default_hmm()
 
-        # if self.hmm and self.model_path_lstm:
-        #     # only the lstm model is provided, use the default HMM Layer
-        #     if self.transformer or self.trans_lstm:
-        #         # lstm model includes transformer
-        #         lstm_model_full = keras.models.load_model(self.model_path_lstm,
-        #                                                   custom_objects={'TFEsmForMaskedLM': TFEsmForMaskedLM})
-        #         self.trans_model = self.transformer_model(self.seq_len, lstm_model_full)
-        #         self.lstm_model = self.trans_lstm_model(lstm_model_full)
-        #     elif self.lstm_cfg:
-        #         with open(self.lstm_cfg, 'r') as f:
-        #             config = json.load(f)
-        #         relevant_keys = ['units', 'filter_size', 'kernel_size',
-        #                          'numb_conv', 'numb_lstm', 'dropout_rate',
-        #                          'pool_size', 'stride', 'lstm_mask', 'clamsa',
-        #                          'output_size', 'residual_conv', 'softmasking',
-        #                          'clamsa_kernel', 'lru_layer']
-        #         relevant_args = {key: config[key] for key in relevant_keys if key in config}
-        #         self.lstm_model = lstm_model(**relevant_args)
-        #         self.lstm_model.load_weights(self.model_path_lstm + '/variables/variables')
-        #     else:
-        #         self.lstm_model = keras.models.load_model(self.model_path_lstm,
-        #                                                   custom_objects={'custom_cce_f1_loss': custom_cce_f1_loss(2,
-        #                                                                                                            self.batch_size),
-        #                                                                   'loss_': custom_cce_f1_loss(2,
-        #                                                                                               self.batch_size)})
-        #     if self.model_path_hmm:
-        #         model_hmm = keras.models.load_model(self.model_path_hmm,
-        #                                             custom_objects={
-        #                                                 'custom_cce_f1_loss': custom_cce_f1_loss(2, self.batch_size),
-        #                                                 'loss_': custom_cce_f1_loss(2, self.batch_size)})
-        #         self.gene_pred_hmm_layer = model_hmm.get_layer('gene_pred_hmm_layer')
-        #         self.gene_pred_hmm_layer.parallel_factor = self.parallel_factor
-        #         self.gene_pred_hmm_layer.cell.recurrent_init()
-        #     else:
-        #         self.make_default_hmm(inp_size=self.lstm_model.output.shape[-1])
-        #         # self.make_default_hmm()
-        #     if summary:
-        #         self.lstm_model.summary()
-        # elif self.model_path_lstm:
-        #     self.lstm_model = keras.models.load_model(self.model_path_lstm,
-        #                                               custom_objects={
-        #                                                   'custom_cce_f1_loss': custom_cce_f1_loss(2, self.batch_size),
-        #                                                   'loss_': custom_cce_f1_loss(2, self.batch_size)})
-        # elif self.model_path and self.emb:
-        #     # load LSTM+HMM model and extract LSTM part
-        #     self.model = keras.models.load_model(self.model_path,
-        #                                          custom_objects={
-        #                                              'custom_cce_f1_loss': custom_cce_f1_loss(2, self.batch_size),
-        #                                              'loss_': custom_cce_f1_loss(2, self.batch_size)})
-        #     if summary:
-        #         self.model.summary()
-        #     # if len(self.model.input) == 2:
-        #     #     inp = self.model.input[0]
-        #     # else:
-        #     #     inp = self.model.input
-        #     self.lstm_model = Model(
-        #         inputs=self.model.input,
-        #         outputs=[self.model.get_layer('lstm_out').output,
-        #                  self.model.get_layer('layer_normalization_hmm').output]
-        #     )
-        #     self.gene_pred_hmm_layer = self.model.get_layer('gene_pred_hmm_layer')
-        #     if self.parallel_factor is not None:
-        #         self.gene_pred_hmm_layer.parallel_factor = self.parallel_factor
-        #     self.gene_pred_hmm_layer.cell.recurrent_init()
-        # elif self.model_path:
-        #     if False:
-        #         self.model = clamsa_only_model()
-        #         self.model.load_weights(self.model_path + "/variables/variables",
-        #                                 custom_objects={'custom_cce_f1_loss': custom_cce_f1_loss(2, self.batch_size),
-        #                                                 'loss_': custom_cce_f1_loss(2, self.batch_size)})
-        #         if self.hmm:
-        #             self.lstm_model = Model(
-        #                 inputs=self.model.input,
-        #                 outputs=self.model.get_layer('lstm_out').output
-        #             )
-        #             self.gene_pred_hmm_layer = self.model.get_layer('gene_pred_hmm_layer')
-        #
-        #             if self.parallel_factor is not None:
-        #                 self.gene_pred_hmm_layer.parallel_factor = self.parallel_factor
-        #             print(
-        #                 f"Running gene pred hmm layer with parallel factor {self.gene_pred_hmm_layer.parallel_factor}")
-        #
-        #             self.gene_pred_hmm_layer.cell.recurrent_init()
-        #     if True:
-        #         self.model = keras.models.load_model(self.model_path,
-        #                                              custom_objects={
-        #                                                  'custom_cce_f1_loss': custom_cce_f1_loss(2, self.batch_size),
-        #                                                  'loss_': custom_cce_f1_loss(2, self.batch_size)})
-        #         if self.hmm:
-        #             try:
-        #                 lstm_output = self.model.get_layer('out').output
-        #             except ValueError as e:
-        #                 lstm_output = self.model.get_layer('lstm_out').output
-        #             self.lstm_model = Model(
-        #                 inputs=self.model.input,
-        #                 outputs=lstm_output
-        #             )
-        #             self.gene_pred_hmm_layer = self.model.get_layer('gene_pred_hmm_layer')
-        #
-        #             if self.parallel_factor is not None:
-        #                 self.gene_pred_hmm_layer.parallel_factor = self.parallel_factor
-        #             print(
-        #                 f"Running gene pred hmm layer with parallel factor {self.gene_pred_hmm_layer.parallel_factor}")
-        #
-        #             self.gene_pred_hmm_layer.cell.recurrent_init()
-        #     if summary:
-        #         self.model.summary()
-        # else:
-        #     self.make_default_hmm()
+        elif self.hmm and self.model_path_lstm:
+            # only the lstm model is provided, use the default HMM Layer
+            if self.transformer or self.trans_lstm:
+                # lstm model includes transformer
+                lstm_model_full = keras.models.load_model(self.model_path_lstm,
+                                                          custom_objects={'TFEsmForMaskedLM': TFEsmForMaskedLM})
+                self.trans_model = self.transformer_model(self.seq_len, lstm_model_full)
+                self.lstm_model = self.trans_lstm_model(lstm_model_full)
+            elif self.lstm_cfg:
+                with open(self.lstm_cfg, 'r') as f:
+                    config = json.load(f)
+                relevant_keys = ['units', 'filter_size', 'kernel_size',
+                                 'numb_conv', 'numb_lstm', 'dropout_rate',
+                                 'pool_size', 'stride', 'lstm_mask', 'clamsa',
+                                 'output_size', 'residual_conv', 'softmasking',
+                                 'clamsa_kernel', 'lru_layer']
+                relevant_args = {key: config[key] for key in relevant_keys if key in config}
+                self.lstm_model = lstm_model(**relevant_args)
+                self.lstm_model.load_weights(self.model_path_lstm + '/variables/variables')
+            else:
+                self.lstm_model = keras.models.load_model(self.model_path_lstm,
+                                                          custom_objects={'custom_cce_f1_loss': custom_cce_f1_loss(2,
+                                                                                                                   self.batch_size),
+                                                                          'loss_': custom_cce_f1_loss(2,
+                                                                                                      self.batch_size)})
+            if self.model_path_hmm:
+                model_hmm = keras.models.load_model(self.model_path_hmm,
+                                                    custom_objects={
+                                                        'custom_cce_f1_loss': custom_cce_f1_loss(2, self.batch_size),
+                                                        'loss_': custom_cce_f1_loss(2, self.batch_size)})
+                self.gene_pred_hmm_layer = model_hmm.get_layer('gene_pred_hmm_layer')
+                self.gene_pred_hmm_layer.parallel_factor = self.parallel_factor
+                self.gene_pred_hmm_layer.cell.recurrent_init()
+            else:
+                self.make_default_hmm(inp_size=self.lstm_model.output.shape[-1])
+                # self.make_default_hmm()
+            if summary:
+                self.lstm_model.summary()
+        elif self.model_path_lstm:
+            self.lstm_model = keras.models.load_model(self.model_path_lstm,
+                                                      custom_objects={
+                                                          'custom_cce_f1_loss': custom_cce_f1_loss(2, self.batch_size),
+                                                          'loss_': custom_cce_f1_loss(2, self.batch_size)})
+        elif self.model_path and self.emb:
+            # load LSTM+HMM model and extract LSTM part
+            self.model = keras.models.load_model(self.model_path,
+                                                 custom_objects={
+                                                     'custom_cce_f1_loss': custom_cce_f1_loss(2, self.batch_size),
+                                                     'loss_': custom_cce_f1_loss(2, self.batch_size)})
+            if summary:
+                self.model.summary()
+            # if len(self.model.input) == 2:
+            #     inp = self.model.input[0]
+            # else:
+            #     inp = self.model.input
+            self.lstm_model = Model(
+                inputs=self.model.input,
+                outputs=[self.model.get_layer('lstm_out').output,
+                         self.model.get_layer('layer_normalization_hmm').output]
+            )
+            self.gene_pred_hmm_layer = self.model.get_layer('gene_pred_hmm_layer')
+            if self.parallel_factor is not None:
+                self.gene_pred_hmm_layer.parallel_factor = self.parallel_factor
+            self.gene_pred_hmm_layer.cell.recurrent_init()
+        elif self.model_path:
+            if False:
+                self.model = clamsa_only_model()
+                self.model.load_weights(self.model_path + "/variables/variables",
+                                        custom_objects={'custom_cce_f1_loss': custom_cce_f1_loss(2, self.batch_size),
+                                                        'loss_': custom_cce_f1_loss(2, self.batch_size)})
+                if self.hmm:
+                    self.lstm_model = Model(
+                        inputs=self.model.input,
+                        outputs=self.model.get_layer('lstm_out').output
+                    )
+                    self.gene_pred_hmm_layer = self.model.get_layer('gene_pred_hmm_layer')
+
+                    if self.parallel_factor is not None:
+                        self.gene_pred_hmm_layer.parallel_factor = self.parallel_factor
+                    print(
+                        f"Running gene pred hmm layer with parallel factor {self.gene_pred_hmm_layer.parallel_factor}")
+
+                    self.gene_pred_hmm_layer.cell.recurrent_init()
+            if True:
+                self.model = keras.models.load_model(self.model_path,
+                                                     custom_objects={
+                                                         'custom_cce_f1_loss': custom_cce_f1_loss(2, self.batch_size),
+                                                         'loss_': custom_cce_f1_loss(2, self.batch_size)})
+                if self.hmm:
+                    try:
+                        lstm_output = self.model.get_layer('out').output
+                    except ValueError as e:
+                        lstm_output = self.model.get_layer('lstm_out').output
+                    self.lstm_model = Model(
+                        inputs=self.model.input,
+                        outputs=lstm_output
+                    )
+                    self.gene_pred_hmm_layer = self.model.get_layer('gene_pred_hmm_layer')
+
+                    if self.parallel_factor is not None:
+                        self.gene_pred_hmm_layer.parallel_factor = self.parallel_factor
+                    print(
+                        f"Running gene pred hmm layer with parallel factor {self.gene_pred_hmm_layer.parallel_factor}")
+
+                    self.gene_pred_hmm_layer.cell.recurrent_init()
+            if summary:
+                self.model.summary()
+        else:
+            self.make_default_hmm()
 
     # def transformer_model(self, seq_len, lstm_load):
     #     input_ids = Input(shape=(None,), dtype='int32', name='input_ids')

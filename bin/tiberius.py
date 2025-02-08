@@ -103,6 +103,7 @@ def extract_tar_gz(file_path, dest_dir):
 def main():
     start_time = time.time()
     args = parseCmd()
+    logging.info(f'Arguments: {args}')
 
     url_weights = {
         'Tiberius_default': 'https://bioinf.uni-greifswald.de/bioinf/tiberius/models/tiberius_weights.tgz',
