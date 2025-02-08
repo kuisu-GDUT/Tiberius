@@ -112,7 +112,7 @@ def main():
     }
     print(f"learMSA path: {args.learnMSA}")
     sys.path.insert(0, args.learnMSA)
-    from eval_model_class_torch import PredictionGTF
+    from eval_model_class import PredictionGTF
     from models import make_weighted_cce_loss
     from genome_anno import Anno
 
@@ -201,7 +201,7 @@ def main():
             genome_path=genome_path,
             softmask=not args.no_softmasking, strand=s_,
             parallel_factor=args.parallel_factor,
-            torch_model=args.torch_model
+            # torch_model=args.torch_model
             # lstm_cfg=args.lstm_cfg,
         )
 
