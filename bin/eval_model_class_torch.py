@@ -433,11 +433,13 @@ class PredictionGTF:
                 decoded_seq_str = [''.join(decoded_seq)]
             return decoded_seq_str
 
-        tokens = decode_sequence(inp_chunks)
-        tokens = self.tokenizer.batch_encode_plus(tokens,
-                                                  padding="max_length",
-                                                  )
-        return tokens
+        decoded_seq_str = decode_sequence(inp_chunks)
+        input_ids = []
+        for seq_str in decoded_seq_str:
+            tokens = self.tokenizer.tokenize(seq_str)
+            input_id = self.tokenizer.convert_tokens_to_ids(tokens)
+            input_ids.append(input_id)
+        return torch.tensor(input_ids, dtype=torch.long)
 
     def tokenize_inp(self, inp_chunks):
         """Tokenizes input sequences for nucleotide transformer.
@@ -555,9 +557,11 @@ class PredictionGTF:
                     clamsa_inp[start_pos:end_pos]
                 ])
             elif self.torch_model:
-                input_x = torch.Tensor(inp_chunks[start_pos:end_pos]).to(self.lstm_model.model.device)
-                input_x1 = torch.concat([input_x, torch.zeros_like(input_x[:, :, :5])], axis=2)  # TODO, 临时适配
-                output = self.lstm_model(input_x1)
+                input_seq = inp_chunks[start_pos:end_pos]
+                input_ids = self.tokenize_inp_torch(input_seq)
+                input_x = torch.Tensor(input_ids).to(self.lstm_model.model.device)
+                # input_x1 = torch.concat([input_x, torch.zeros_like(input_x[:, :, :5])], axis=2)  # TODO, 临时适配
+                output = self.lstm_model(input_x)
                 y = output.logits.cpu().detach().numpy()
             else:  # TODO: 这里可以添加torch的模型
                 y = self.lstm_model.predict_on_batch(inp_chunks[start_pos:end_pos])
