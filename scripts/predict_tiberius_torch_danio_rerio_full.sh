@@ -7,7 +7,7 @@ SPECIES_FASTA="/home/share/huadjyin/home/yinpeng/sukui_data/gene_structure/Speci
 python bin/tiberius.py \
   --genome $SPECIES_FASTA \
   --out /home/share/huadjyin/home/s_sukui/03_project/01_GeneLLM/Tiberius/danio_rerio_output.full.dsub.gtf \
-  --model /home/share/huadjyin/home/s_sukui/03_project/01_GeneLLM/DNA_LLM/outputs/supervised/FishsTiberius7label_Combine_dataset_with_10_fish_tiberius_transformer \
+  --model /home/share/huadjyin/home/s_sukui/03_project/01_GeneLLM/DNA_LLM/outputs/supervised/FishsTiberius7label_Combine_dataset_with_10_fish_tiberius_transformer/checkpoint-best \
   --learnMSA /home/share/huadjyin/home/s_sukui/03_project/01_GeneLLM/Tiberius/ \
   --batch_size 32 \
   --seq_len 9999 \

@@ -102,6 +102,8 @@ def extract_tar_gz(file_path, dest_dir):
 
 def main():
     start_time = time.time()
+    lstm_time = 0
+    hmm_time = 0
     args = parseCmd()
     logging.info(f'Arguments: {args}')
 
@@ -112,7 +114,7 @@ def main():
     }
     print(f"learMSA path: {args.learnMSA}")
     sys.path.insert(0, args.learnMSA)
-    from eval_model_class import PredictionGTF
+    from eval_model_class_torch import PredictionGTF
     from models import make_weighted_cce_loss
     from genome_anno import Anno
 
@@ -226,7 +228,10 @@ def main():
                     clamsa = pred_gtf.load_clamsa_data(clamsa_prefix=clamsa_prefix, seq_names=seq,
                                                        strand=s_, chunk_len=seq_len, pad=True)
 
-                hmm_pred = pred_gtf.get_predictions(x_data, hmm_filter=True, clamsa_inp=clamsa)
+                hmm_pred, lstm_duration, hmm_duration = pred_gtf.get_predictions(x_data, hmm_filter=True,
+                                                                                 clamsa_inp=clamsa)
+                lstm_duration += hmm_duration
+                hmm_time += hmm_duration
                 anno, tx_id = pred_gtf.create_gtf(y_label=hmm_pred, coords=coords, f_chunks=x_data,
                                                   clamsa_inp=clamsa, strand=s_, anno=anno, tx_id=tx_id,
                                                   filt=False)
@@ -280,7 +285,8 @@ def main():
 
     end_time = time.time()
     duration = end_time - start_time
-    print(f"Tiberius took {duration / 60} minutes to execute.")
+    print(
+        f"Tiberius took {duration / 60} minutes to execute., LSTM time: {lstm_time / 60} minutes, HMM time: {hmm_time / 60} minutes")
 
 
 def parseCmd():

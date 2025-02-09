@@ -745,9 +745,9 @@ class PredictionGTF:
         self.lstm_pred = encoding_layer_pred
         torch.cuda.empty_cache()  # 释放torch的显存
         lstm_end = time.time()
-        duration = lstm_end - start_time
-        print(f"LSTM took {duration / 60} minutes to execute.")
-        logging.info(f"LSTM took {duration / 60} minutes to execute.")
+        lstm_duration = lstm_end - start_time
+        print(f"LSTM took {lstm_duration / 60} minutes to execute.")
+        logging.info(f"LSTM took {lstm_duration / 60} minutes to execute.")
         if not self.hmm:
             encoding_layer_pred = np.argmax(encoding_layer_pred, axis=-1)
             return encoding_layer_pred
@@ -759,10 +759,10 @@ class PredictionGTF:
             hmm_predictions = self.hmm_prediction(inp_chunks, encoding_layer_pred, save=save,
                                                   batch_size=batch_size)
         hmm_end = time.time()
-        duration = hmm_end - lstm_end
-        print(f"HMM took {duration / 60} minutes to execute.")
-        logging.info(f"HMM took {duration / 60} minutes to execute.")
-        return hmm_predictions
+        hmm_duration = hmm_end - lstm_end
+        print(f"HMM took {hmm_duration / 60} minutes to execute.")
+        logging.info(f"HMM took {hmm_duration / 60} minutes to execute.")
+        return hmm_predictions, lstm_duration, hmm_duration
 
     def get_tp_fn_fp(self, predictions, true_labels):
         """Calculates true positives, false positives, 
